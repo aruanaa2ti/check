@@ -1,6 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Calendar, CheckCircle, Loader2, Pencil, Plus, RotateCcw, WalletCards, X, XCircle } from "lucide-react";
+import { Calendar, CheckCircle, Eye, Loader2, Pencil, Plus, RotateCcw, WalletCards, X, XCircle } from "lucide-react";
 import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { CheckLayout } from "@/components/check/CheckLayout";
 import { checkMeFn } from "@/lib/check.functions";
@@ -99,6 +99,7 @@ function CheckPayablesPage() {
   const [recurringOpen, setRecurringOpen] = useState(false);
   const [editingRecurring, setEditingRecurring] = useState<(typeof initial.recurringRules)[number] | null>(null);
   const [settlingPayable, setSettlingPayable] = useState<(typeof initial.payables)[number] | null>(null);
+  const [viewingSettlement, setViewingSettlement] = useState<(typeof initial.payables)[number] | null>(null);
   const [newPaymentMethodOpen, setNewPaymentMethodOpen] = useState(false);
   const [newPaymentMethodName, setNewPaymentMethodName] = useState("");
   const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState("");
@@ -113,6 +114,9 @@ function CheckPayablesPage() {
   const settlementInterestAmount = parseMoneyBR(settleInterest);
   const settlementDiscountAmount = parseMoneyBR(settleDiscount);
   const settlementPaidAmount = Math.max(settlementBaseAmount + settlementInterestAmount - settlementDiscountAmount, 0);
+  const viewedPaidAmount = viewingSettlement
+    ? Number(viewingSettlement.paidAmount || 0) || Math.max(Number(viewingSettlement.amount || 0) + Number(viewingSettlement.interestAmount || 0) - Number(viewingSettlement.discountAmount || 0), 0)
+    : 0;
 
   const filtered = useMemo(() => {
     const q = term.toLowerCase().trim();
@@ -297,6 +301,12 @@ function CheckPayablesPage() {
     setSettlePaymentMethodId(payable.paymentMethodId ? String(payable.paymentMethodId) : "");
   };
 
+  const openViewSettlement = (payable: (typeof initial.payables)[number]) => {
+    setError("");
+    setNotice("");
+    setViewingSettlement(payable);
+  };
+
   const submitSettlement = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!settlingPayable) return;
@@ -472,9 +482,15 @@ function CheckPayablesPage() {
                               <CheckCircle className="h-4 w-4" />
                             </IconButton>
                           )}
-                          <IconButton title="Editar conta" disabled={actionId === payable.id || payable.status === "paid"} onClick={() => openEditAccount(payable)}>
-                            <Pencil className="h-4 w-4" />
-                          </IconButton>
+                          {payable.status === "paid" ? (
+                            <IconButton title="Ver baixa" disabled={actionId === payable.id} onClick={() => openViewSettlement(payable)}>
+                              <Eye className="h-4 w-4" />
+                            </IconButton>
+                          ) : (
+                            <IconButton title="Editar conta" disabled={actionId === payable.id} onClick={() => openEditAccount(payable)}>
+                              <Pencil className="h-4 w-4" />
+                            </IconButton>
+                          )}
                           {payable.status !== "cancelled" && (
                             <IconButton title="Cancelar" disabled={actionId === payable.id} onClick={() => changeStatus(payable.id, "cancelled")}>
                               <XCircle className="h-4 w-4" />
@@ -779,6 +795,43 @@ function CheckPayablesPage() {
         </div>
       )}
 
+      {viewingSettlement && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-2xl rounded-lg border border-border bg-card shadow-soft">
+            <div className="flex items-center justify-between border-b border-border px-5 py-4">
+              <div className="flex items-center gap-2">
+                <Eye className="h-4 w-4" />
+                <h2 className="text-base font-bold">Baixa da Conta</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewingSettlement(null)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+                aria-label="Fechar"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="grid gap-4 p-5 md:grid-cols-2">
+              <ReadonlyField label="Descrição" value={viewingSettlement.description} className="md:col-span-2" />
+              <ReadonlyField label="Fornecedor" value={viewingSettlement.supplierName || "—"} />
+              <ReadonlyField label="Vencimento" value={formatDateBR(viewingSettlement.dueDate)} />
+              <ReadonlyMoneyField label="Valor" value={Number(viewingSettlement.amount || 0)} />
+              <ReadonlyMoneyField label="Valor Pago" value={viewedPaidAmount} />
+            </div>
+            <div className="flex justify-end border-t border-border px-5 py-4">
+              <button
+                type="button"
+                onClick={() => setViewingSettlement(null)}
+                className="inline-flex h-10 items-center rounded-md border border-border px-4 text-sm font-semibold transition hover:bg-secondary"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {settlingPayable && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg border border-border bg-card shadow-soft">
@@ -956,6 +1009,28 @@ function ReadonlyMoneyField({
       <span className="mb-1 block font-medium">{label}</span>
       <input
         value={formatMoneyBR(value)}
+        readOnly
+        tabIndex={-1}
+        className="h-10 w-full rounded-md border border-input bg-muted/40 px-3 font-semibold text-foreground outline-none"
+      />
+    </label>
+  );
+}
+
+function ReadonlyField({
+  label,
+  value,
+  className = "",
+}: {
+  label: string;
+  value: string;
+  className?: string;
+}) {
+  return (
+    <label className={`text-sm ${className}`}>
+      <span className="mb-1 block font-medium">{label}</span>
+      <input
+        value={value}
         readOnly
         tabIndex={-1}
         className="h-10 w-full rounded-md border border-input bg-muted/40 px-3 font-semibold text-foreground outline-none"
