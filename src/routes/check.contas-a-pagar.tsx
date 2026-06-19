@@ -458,67 +458,67 @@ function DateRangeField({
         <span className="truncate">{label}</span>
       </button>
       {open && (
-        <div className="absolute left-0 top-12 z-20 w-full min-w-72 rounded-md border border-border bg-card p-3 shadow-soft">
-          <div className="grid gap-3">
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => applyRange("today")}
-                className="h-9 rounded-md border border-border px-2 text-xs font-semibold transition hover:bg-secondary"
-              >
-                Hoje
-              </button>
-              <button
-                type="button"
-                onClick={() => applyRange("week")}
-                className="h-9 rounded-md border border-border px-2 text-xs font-semibold transition hover:bg-secondary"
-              >
-                Esta Semana
-              </button>
-              <button
-                type="button"
-                onClick={() => applyRange("month")}
-                className="h-9 rounded-md border border-border px-2 text-xs font-semibold transition hover:bg-secondary"
-              >
-                Este Mês
-              </button>
+        <div className="absolute left-0 top-12 z-20 w-[min(92vw,520px)] rounded-md border border-border bg-card shadow-soft">
+          <div className="grid md:grid-cols-[150px_1fr]">
+            <div className="border-b border-border bg-muted/40 p-2 md:border-b-0 md:border-r">
+              {[
+                ["today", "Hoje"],
+                ["week", "Essa Semana"],
+                ["month", "Esse Mês"],
+              ].map(([range, text]) => (
+                <button
+                  key={range}
+                  type="button"
+                  onClick={() => applyRange(range as "today" | "week" | "month")}
+                  className="flex h-11 w-full items-center rounded-md px-3 text-left text-sm font-medium transition hover:bg-secondary"
+                >
+                  {text}
+                </button>
+              ))}
             </div>
-            <label className="text-xs font-medium text-muted-foreground">
-              Data inicial
-              <input
-                type="date"
-                value={from}
-                onChange={(event) => onFrom(event.target.value)}
-                className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-brand"
-              />
-            </label>
-            <label className="text-xs font-medium text-muted-foreground">
-              Data final
-              <input
-                type="date"
-                value={to}
-                onChange={(event) => onTo(event.target.value)}
-                className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-brand"
-              />
-            </label>
-            <div className="flex justify-between gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  onFrom("");
-                  onTo("");
-                }}
-                className="h-9 rounded-md border border-border px-3 text-xs font-semibold transition hover:bg-secondary"
-              >
-                Limpar
-              </button>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="h-9 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground transition hover:bg-brand-dark"
-              >
-                Aplicar
-              </button>
+            <div className="grid gap-3 p-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="text-xs font-medium text-muted-foreground">
+                  Data inicial
+                  <input
+                    type="date"
+                    value={from}
+                    onChange={(event) => onFrom(event.target.value)}
+                    className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-brand"
+                  />
+                </label>
+                <label className="text-xs font-medium text-muted-foreground">
+                  Data final
+                  <input
+                    type="date"
+                    value={to}
+                    onChange={(event) => onTo(event.target.value)}
+                    className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-brand"
+                  />
+                </label>
+              </div>
+              <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
+                <span className="truncate text-sm text-muted-foreground">{label}</span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onFrom("");
+                      onTo("");
+                    }}
+                    className="h-9 rounded-md border border-border px-3 text-xs font-semibold transition hover:bg-secondary"
+                  >
+                    Limpar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOpen(false)}
+                    className="h-9 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground transition hover:bg-brand-dark"
+                  >
+                    Aplicar
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
