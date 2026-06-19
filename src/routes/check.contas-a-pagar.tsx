@@ -806,12 +806,6 @@ function CheckPayablesPage() {
             <form onSubmit={submitSettlement} className="grid gap-4 p-5 md:grid-cols-2">
               <div className="rounded-md border border-border bg-muted/30 p-4 md:col-span-2">
                 <p className="text-sm font-semibold">{settlingPayable.description}</p>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                  <PaymentPreview label="Valor" value={settlementBaseAmount} />
-                  <PaymentPreview label="Juros" value={settlementInterestAmount} tone="danger" />
-                  <PaymentPreview label="Desconto" value={settlementDiscountAmount} tone="success" />
-                  <PaymentPreview label="Valor pago" value={settlementPaidAmount} tone="primary" />
-                </div>
               </div>
               <Field label="Data do pagamento" name="paidAt" type="date" defaultValue={settlePaidAt} required />
               <label className="text-sm">
@@ -828,6 +822,8 @@ function CheckPayablesPage() {
                   ))}
                 </select>
               </label>
+              <ReadonlyMoneyField label="Valor" value={settlementBaseAmount} />
+              <ReadonlyMoneyField label="Valor Pago" value={settlementPaidAmount} />
               <MoneyField label="Juros" name="interestAmount" value={settleInterest} onChange={setSettleInterest} />
               <MoneyField label="Desconto" name="discountAmount" value={settleDiscount} onChange={setSettleDiscount} />
               <div className="md:col-span-2">
@@ -948,27 +944,23 @@ function MoneyField({
   );
 }
 
-function PaymentPreview({
+function ReadonlyMoneyField({
   label,
   value,
-  tone = "default",
 }: {
   label: string;
   value: number;
-  tone?: "default" | "success" | "danger" | "primary";
 }) {
-  const toneClass = {
-    default: "text-foreground",
-    success: "text-emerald-700",
-    danger: "text-red-700",
-    primary: "text-brand",
-  }[tone];
-
   return (
-    <div className="rounded-md border border-border bg-background p-3">
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className={`mt-1 whitespace-nowrap text-lg font-bold ${toneClass}`}>{formatMoneyBR(value)}</p>
-    </div>
+    <label className="text-sm">
+      <span className="mb-1 block font-medium">{label}</span>
+      <input
+        value={formatMoneyBR(value)}
+        readOnly
+        tabIndex={-1}
+        className="h-10 w-full rounded-md border border-input bg-muted/40 px-3 font-semibold text-foreground outline-none"
+      />
+    </label>
   );
 }
 
