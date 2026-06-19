@@ -5,7 +5,6 @@ import {
   Check,
   Clock,
   Copy,
-  DollarSign,
   Loader2,
   MessageSquare,
   Search,
@@ -16,7 +15,7 @@ import { useState } from "react";
 import { CheckLayout } from "@/components/check/CheckLayout";
 import { StatusBadge } from "@/components/portal/StatusBadge";
 import { checkClientContactsFn, checkDashboardFn, checkGlobalSearchFn, checkMeFn } from "@/lib/check.functions";
-import { formatMoneyBR, serviceStatusLabel } from "@/lib/format";
+import { serviceStatusLabel } from "@/lib/format";
 
 type SearchResult = Awaited<ReturnType<typeof checkGlobalSearchFn>>;
 
@@ -140,17 +139,6 @@ function CheckDashboardPage() {
         </div>
       </section>
 
-      {data.adminInsights && (
-        <section className="mb-8">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <BillingCard label="Todo período" value={formatMoneyBR(data.adminInsights.billing.allTime)} accent="bg-slate-100 text-slate-700" />
-            <BillingCard label="Este ano" value={formatMoneyBR(data.adminInsights.billing.year)} accent="bg-pink-100 text-pink-600" />
-            <BillingCard label="Este mês" value={formatMoneyBR(data.adminInsights.billing.month)} accent="bg-amber-100 text-amber-600" />
-            <BillingCard label="Hoje" value={formatMoneyBR(data.adminInsights.billing.today)} accent="bg-emerald-100 text-emerald-700" />
-          </div>
-        </section>
-      )}
-
       <section className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {stats.map((stat) => {
           const Icon = stat.icon;
@@ -208,24 +196,6 @@ function CheckDashboardPage() {
         />
       )}
     </CheckLayout>
-  );
-}
-
-function BillingCard({ label, value, accent }: { label: string; value: string; accent: string }) {
-  return (
-    <div className="card-soft min-w-0 p-6">
-      <div className="flex min-w-0 items-start justify-between gap-4">
-        <div className="min-w-0">
-          <p className="text-sm text-muted-foreground">{label}</p>
-          <p className="mt-2 whitespace-nowrap text-xl font-bold tracking-tight text-foreground min-[420px]:text-2xl lg:text-3xl xl:text-[clamp(1.05rem,1.35vw,1.875rem)]">
-            {value}
-          </p>
-        </div>
-        <span className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md ${accent}`}>
-          <DollarSign className="h-5 w-5" />
-        </span>
-      </div>
-    </div>
   );
 }
 
