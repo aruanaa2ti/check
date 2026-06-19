@@ -7,12 +7,16 @@ import { checkMeFn } from "@/lib/check.functions";
 import {
   createPaymentMethodFn,
   createPayableFn,
+  createRecurringPayableFn,
   listPayablesFn,
   listPaymentMethodsFn,
+  listRecurringPayablesFn,
   listSupplierCategoriesFn,
   listSuppliersFn,
   settlePayableFn,
   updatePayableFn,
+  updateRecurringPayableFn,
+  updateRecurringPayableStatusFn,
   updatePayableStatusFn,
 } from "@/lib/payables.functions";
 import { formatDateBR, formatMoneyBR } from "@/lib/format";
@@ -20,13 +24,14 @@ import { formatDateBR, formatMoneyBR } from "@/lib/format";
 const opts = {
   queryKey: ["check-payables"],
   queryFn: async () => {
-    const [payables, suppliers, categories, paymentMethods] = await Promise.all([
+    const [payables, suppliers, categories, paymentMethods, recurringRules] = await Promise.all([
       listPayablesFn(),
       listSuppliersFn(),
       listSupplierCategoriesFn(),
       listPaymentMethodsFn(),
+      listRecurringPayablesFn(),
     ]);
-    return { payables, suppliers, categories, paymentMethods };
+    return { payables, suppliers, categories, paymentMethods, recurringRules };
   },
 };
 
@@ -38,9 +43,13 @@ const statusLabels = {
 } as Record<string, string>;
 
 const recurrenceLabels = {
-  none: "Unica",
   monthly: "Mensal",
   yearly: "Anual",
+} as Record<string, string>;
+
+const valueTypeLabels = {
+  fixed: "Fixo",
+  variable: "Variavel",
 } as Record<string, string>;
 
 export const Route = createFileRoute("/check/contas-a-pagar")({
@@ -57,6 +66,7 @@ export const Route = createFileRoute("/check/contas-a-pagar")({
         suppliers: [],
         categories: [],
         paymentMethods: [],
+        recurringRules: [],
         payablesLoadError: error instanceof Error ? error.message : "Nao foi possivel carregar as contas a pagar.",
       };
     }
@@ -68,11 +78,16 @@ function CheckPayablesPage() {
   const initial = Route.useLoaderData();
   const createPayable = useServerFn(createPayableFn);
   const createPaymentMethod = useServerFn(createPaymentMethodFn);
+  const createRecurringPayable = useServerFn(createRecurringPayableFn);
   const updatePayable = useServerFn(updatePayableFn);
+  const updateRecurringPayable = useServerFn(updateRecurringPayableFn);
+  const updateRecurringStatus = useServerFn(updateRecurringPayableStatusFn);
   const settlePayable = useServerFn(settlePayableFn);
   const updateStatus = useServerFn(updatePayableStatusFn);
   const [payables, setPayables] = useState(initial.payables);
+  const [recurringRules, setRecurringRules] = useState(initial.recurringRules);
   const [paymentMethods, setPaymentMethods] = useState(initial.paymentMethods);
+  const [activeTab, setActiveTab] = useState<"accounts" | "recurring">("accounts");
   const [term, setTerm] = useState("");
   const [status, setStatus] = useState("");
   const [dateFrom, setDateFrom] = useState("");
@@ -81,6 +96,8 @@ function CheckPayablesPage() {
   const [actionId, setActionId] = useState<number | null>(null);
   const [newAccountOpen, setNewAccountOpen] = useState(false);
   const [editingPayable, setEditingPayable] = useState<(typeof initial.payables)[number] | null>(null);
+  const [recurringOpen, setRecurringOpen] = useState(false);
+  const [editingRecurring, setEditingRecurring] = useState<(typeof initial.recurringRules)[number] | null>(null);
   const [settlingPayable, setSettlingPayable] = useState<(typeof initial.payables)[number] | null>(null);
   const [newPaymentMethodOpen, setNewPaymentMethodOpen] = useState(false);
   const [newPaymentMethodName, setNewPaymentMethodName] = useState("");
@@ -112,6 +129,22 @@ function CheckPayablesPage() {
     });
   }, [dateFrom, dateTo, payables, status, term]);
 
+  const filteredRecurring = useMemo(() => {
+    const q = term.toLowerCase().trim();
+    return recurringRules.filter((rule) => {
+      const haystack = [
+        rule.description,
+        rule.supplierName,
+        rule.categoryName,
+        rule.paymentMethod,
+        rule.status,
+        rule.valueType,
+        String(rule.dueDay),
+      ].join(" ").toLowerCase();
+      return !q || haystack.includes(q);
+    });
+  }, [recurringRules, term]);
+
   const totals = useMemo(() => {
     const open = payables.filter((item) => item.status === "open" || item.status === "overdue");
     const paid = payables.filter((item) => item.status === "paid");
@@ -123,6 +156,7 @@ function CheckPayablesPage() {
   }, [payables]);
 
   const refresh = async () => setPayables(await listPayablesFn());
+  const refreshRecurring = async () => setRecurringRules(await listRecurringPayablesFn());
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -138,7 +172,7 @@ function CheckPayablesPage() {
       amount: parseMoneyBR(String(form.get("amount") || "0")),
       dueDate: String(form.get("dueDate") || ""),
       competency: String(form.get("competency") || ""),
-      recurrence: String(form.get("recurrence") || "none") as "none" | "monthly" | "yearly",
+      recurrence: "none" as const,
       paymentMethodId: Number(form.get("paymentMethodId") || 0) || undefined,
       notes: String(form.get("notes") || ""),
     };
@@ -163,6 +197,43 @@ function CheckPayablesPage() {
     }
   };
 
+  const submitRecurring = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSaving(true);
+    setNotice("");
+    setError("");
+    const formEl = event.currentTarget;
+    const form = new FormData(formEl);
+    const valueType = String(form.get("valueType") || "variable") as "fixed" | "variable";
+    const payload = {
+      supplierId: Number(form.get("supplierId") || 0) || undefined,
+      categoryId: Number(form.get("categoryId") || 0) || undefined,
+      paymentMethodId: Number(form.get("paymentMethodId") || 0) || undefined,
+      description: String(form.get("description") || ""),
+      dueDay: Number(form.get("dueDay") || 0),
+      valueType,
+      amount: valueType === "fixed" ? parseMoneyBR(String(form.get("amount") || "0")) : undefined,
+      recurrence: String(form.get("recurrence") || "monthly") as "monthly" | "yearly",
+      notes: String(form.get("notes") || ""),
+    };
+    try {
+      if (editingRecurring) {
+        await updateRecurringPayable({ data: { id: editingRecurring.id, ...payload } });
+      } else {
+        await createRecurringPayable({ data: payload });
+      }
+      await refreshRecurring();
+      formEl.reset();
+      setRecurringOpen(false);
+      setEditingRecurring(null);
+      setNotice(editingRecurring ? "Recorrente atualizado com sucesso." : "Recorrente cadastrado com sucesso.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Nao foi possivel salvar o recorrente.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const openNewAccount = () => {
     setError("");
     setNotice("");
@@ -173,6 +244,13 @@ function CheckPayablesPage() {
     setNewAccountOpen(true);
   };
 
+  const openNewRecurring = () => {
+    setError("");
+    setNotice("");
+    setEditingRecurring(null);
+    setRecurringOpen(true);
+  };
+
   const openEditAccount = (payable: (typeof initial.payables)[number]) => {
     setError("");
     setNotice("");
@@ -181,6 +259,28 @@ function CheckPayablesPage() {
     setNewPaymentMethodOpen(false);
     setNewPaymentMethodName("");
     setNewAccountOpen(true);
+  };
+
+  const openEditRecurring = (rule: (typeof initial.recurringRules)[number]) => {
+    setError("");
+    setNotice("");
+    setEditingRecurring(rule);
+    setRecurringOpen(true);
+  };
+
+  const changeRecurringStatus = async (id: number, nextStatus: "active" | "inactive") => {
+    setActionId(id);
+    setNotice("");
+    setError("");
+    try {
+      await updateRecurringStatus({ data: { id, status: nextStatus } });
+      await refreshRecurring();
+      setNotice(nextStatus === "active" ? "Recorrente reativado com sucesso." : "Recorrente desativado com sucesso.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Nao foi possivel atualizar o recorrente.");
+    } finally {
+      setActionId(null);
+    }
   };
 
   const openSettlement = (payable: (typeof initial.payables)[number]) => {
@@ -263,25 +363,44 @@ function CheckPayablesPage() {
             {initial.payablesLoadError}
           </section>
         )}
-        <section className="grid gap-4 md:grid-cols-3">
-          <SummaryCard label="Em aberto" value={formatMoneyBR(totals.open)} />
-          <SummaryCard label="Vencido" value={formatMoneyBR(totals.overdue)} variant="danger" />
-          <SummaryCard label="Pago" value={formatMoneyBR(totals.paid)} variant="success" />
-        </section>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveTab("accounts")}
+            className={`h-10 rounded-md px-4 text-sm font-semibold transition ${activeTab === "accounts" ? "bg-primary text-primary-foreground" : "border border-border bg-card hover:bg-secondary"}`}
+          >
+            Contas
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("recurring")}
+            className={`h-10 rounded-md px-4 text-sm font-semibold transition ${activeTab === "recurring" ? "bg-primary text-primary-foreground" : "border border-border bg-card hover:bg-secondary"}`}
+          >
+            Recorrentes
+          </button>
+        </div>
+
+        {activeTab === "accounts" && (
+          <section className="grid gap-4 md:grid-cols-3">
+            <SummaryCard label="Em aberto" value={formatMoneyBR(totals.open)} />
+            <SummaryCard label="Vencido" value={formatMoneyBR(totals.overdue)} variant="danger" />
+            <SummaryCard label="Pago" value={formatMoneyBR(totals.paid)} variant="success" />
+          </section>
+        )}
 
         <section className="card-soft overflow-hidden">
           <div className="flex flex-col gap-3 border-b border-border bg-muted/30 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
               <WalletCards className="h-4 w-4" />
-              <h2 className="text-base font-bold">Contas</h2>
+              <h2 className="text-base font-bold">{activeTab === "accounts" ? "Contas" : "Recorrentes"}</h2>
             </div>
             <button
               type="button"
-              onClick={openNewAccount}
+              onClick={activeTab === "accounts" ? openNewAccount : openNewRecurring}
               className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-brand-dark"
             >
               <Plus className="h-4 w-4" />
-              Nova Conta
+              {activeTab === "accounts" ? "Nova Conta" : "Novo Recorrente"}
             </button>
           </div>
           {(notice || error) && (
@@ -289,34 +408,38 @@ function CheckPayablesPage() {
               {error || notice}
             </div>
           )}
-          <div className="grid gap-3 border-b border-border p-4 lg:grid-cols-[1fr_280px_220px]">
+          <div className={`grid gap-3 border-b border-border p-4 ${activeTab === "accounts" ? "lg:grid-cols-[1fr_280px_220px]" : ""}`}>
             <input
               value={term}
               onChange={(event) => setTerm(event.target.value)}
               className="h-11 rounded-md border border-input bg-background px-4 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/30"
-              placeholder="Filtrar por descrição, fornecedor, categoria ou vencimento"
+              placeholder={activeTab === "accounts" ? "Filtrar por descrição, fornecedor, categoria ou vencimento" : "Filtrar por descrição, fornecedor, categoria, pagamento ou dia"}
             />
-            <DateRangeField from={dateFrom} to={dateTo} onFrom={setDateFrom} onTo={setDateTo} />
-            <select
-              value={status}
-              onChange={(event) => setStatus(event.target.value)}
-              className="h-11 rounded-md border border-input bg-background px-3 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/30"
-            >
-              <option value="">Todos os status</option>
-              <option value="open">Abertas</option>
-              <option value="overdue">Vencidas</option>
-              <option value="paid">Pagas</option>
-              <option value="cancelled">Canceladas</option>
-            </select>
+            {activeTab === "accounts" && (
+              <>
+                <DateRangeField from={dateFrom} to={dateTo} onFrom={setDateFrom} onTo={setDateTo} />
+                <select
+                  value={status}
+                  onChange={(event) => setStatus(event.target.value)}
+                  className="h-11 rounded-md border border-input bg-background px-3 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/30"
+                >
+                  <option value="">Todos os status</option>
+                  <option value="open">Abertas</option>
+                  <option value="overdue">Vencidas</option>
+                  <option value="paid">Pagas</option>
+                  <option value="cancelled">Canceladas</option>
+                </select>
+              </>
+            )}
           </div>
-          {filtered.length === 0 ? (
+          {activeTab === "accounts" && (filtered.length === 0 ? (
             <p className="px-5 py-10 text-center text-sm text-muted-foreground">Nenhuma conta encontrada.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-muted/50 text-xs uppercase tracking-wider text-muted-foreground">
                   <tr>
-                    {["Descrição", "Fornecedor", "Vencimento", "Valor", "Pagamento", "Status", "Recorrência", "Ações"].map((header) => (
+                    {["Descrição", "Fornecedor", "Vencimento", "Valor", "Pagamento", "Status", "Ações"].map((header) => (
                       <th key={header} className="px-5 py-3 text-left font-medium">{header}</th>
                     ))}
                   </tr>
@@ -337,7 +460,6 @@ function CheckPayablesPage() {
                           {statusLabels[payable.status] || payable.status}
                         </span>
                       </td>
-                      <td className="px-5 py-4 text-muted-foreground">{recurrenceLabels[payable.recurrence] || payable.recurrence}</td>
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-2">
                           {payable.status !== "paid" && payable.status !== "cancelled" && (
@@ -365,7 +487,61 @@ function CheckPayablesPage() {
                 </tbody>
               </table>
             </div>
-          )}
+          ))}
+
+          {activeTab === "recurring" && (filteredRecurring.length === 0 ? (
+            <p className="px-5 py-10 text-center text-sm text-muted-foreground">Nenhum recorrente encontrado.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 text-xs uppercase tracking-wider text-muted-foreground">
+                  <tr>
+                    {["Descrição", "Fornecedor", "Dia", "Valor", "Pagamento", "Status", "Ações"].map((header) => (
+                      <th key={header} className="px-5 py-3 text-left font-medium">{header}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {filteredRecurring.map((rule) => (
+                    <tr key={rule.id} className="hover:bg-muted/40">
+                      <td className="px-5 py-4">
+                        <div className="font-medium">{rule.description}</div>
+                        <div className="text-xs text-muted-foreground">{rule.categoryName || "Sem categoria"}</div>
+                      </td>
+                      <td className="px-5 py-4 text-muted-foreground">{rule.supplierName || "—"}</td>
+                      <td className="px-5 py-4 text-muted-foreground">Dia {rule.dueDay}</td>
+                      <td className="px-5 py-4">
+                        <div className="font-semibold">{valueTypeLabels[rule.valueType]}</div>
+                        <div className="text-xs text-muted-foreground">{rule.valueType === "fixed" ? formatMoneyBR(rule.amount || 0) : "Informar na baixa"}</div>
+                      </td>
+                      <td className="px-5 py-4 text-muted-foreground">{rule.paymentMethod || "—"}</td>
+                      <td className="px-5 py-4">
+                        <span className={`rounded-full px-2 py-1 text-xs font-semibold ${rule.status === "active" ? "bg-emerald-100 text-emerald-700" : "bg-muted text-muted-foreground"}`}>
+                          {rule.status === "active" ? "Ativo" : "Inativo"}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-2">
+                          <IconButton title="Editar recorrente" disabled={actionId === rule.id} onClick={() => openEditRecurring(rule)}>
+                            <Pencil className="h-4 w-4" />
+                          </IconButton>
+                          {rule.status === "active" ? (
+                            <IconButton title="Desativar recorrente" disabled={actionId === rule.id} onClick={() => changeRecurringStatus(rule.id, "inactive")}>
+                              <XCircle className="h-4 w-4" />
+                            </IconButton>
+                          ) : (
+                            <IconButton title="Reativar recorrente" disabled={actionId === rule.id} onClick={() => changeRecurringStatus(rule.id, "active")}>
+                              <RotateCcw className="h-4 w-4" />
+                            </IconButton>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ))}
         </section>
       </div>
 
@@ -466,14 +642,6 @@ function CheckPayablesPage() {
                   </div>
                 )}
               </label>
-              <label className="text-sm">
-                <span className="mb-1 block font-medium">Recorrência</span>
-                <select name="recurrence" defaultValue={editingPayable?.recurrence ?? "none"} className="h-10 w-full rounded-md border border-input bg-background px-3 outline-none focus:border-brand">
-                  <option value="none">Unica</option>
-                  <option value="monthly">Mensal</option>
-                  <option value="yearly">Anual</option>
-                </select>
-              </label>
               <div className="md:col-span-2">
                 <label className="text-sm">
                   <span className="mb-1 block font-medium">Observações</span>
@@ -496,6 +664,109 @@ function CheckPayablesPage() {
                 >
                   {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingPayable ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
                   {editingPayable ? "Salvar conta" : "Cadastrar conta"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {recurringOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-lg border border-border bg-card shadow-soft">
+            <div className="flex items-center justify-between border-b border-border px-5 py-4">
+              <div className="flex items-center gap-2">
+                <RotateCcw className="h-4 w-4" />
+                <h2 className="text-base font-bold">{editingRecurring ? "Editar Recorrente" : "Novo Recorrente"}</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!saving) setRecurringOpen(false);
+                }}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+                aria-label="Fechar"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            {error && (
+              <div className="border-b border-red-200 bg-red-50 px-5 py-3 text-sm text-red-700">
+                {error}
+              </div>
+            )}
+            <form key={editingRecurring?.id ?? "new-recurring"} onSubmit={submitRecurring} className="grid gap-4 p-5 md:grid-cols-2">
+              <Field label="Descrição" name="description" defaultValue={editingRecurring?.description ?? ""} required />
+              <label className="text-sm">
+                <span className="mb-1 block font-medium">Fornecedor</span>
+                <select name="supplierId" defaultValue={editingRecurring?.supplierId ?? ""} className="h-10 w-full rounded-md border border-input bg-background px-3 outline-none focus:border-brand">
+                  <option value="">Sem fornecedor</option>
+                  {initial.suppliers.map((supplier) => (
+                    <option key={supplier.id} value={supplier.id}>{supplier.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-sm">
+                <span className="mb-1 block font-medium">Categoria</span>
+                <select name="categoryId" defaultValue={editingRecurring?.categoryId ?? ""} className="h-10 w-full rounded-md border border-input bg-background px-3 outline-none focus:border-brand">
+                  <option value="">Sem categoria</option>
+                  {initial.categories.map((category) => (
+                    <option key={category.id} value={category.id}>{category.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-sm">
+                <span className="mb-1 block font-medium">Forma de pagamento</span>
+                <select name="paymentMethodId" defaultValue={editingRecurring?.paymentMethodId ?? ""} className="h-10 w-full rounded-md border border-input bg-background px-3 outline-none focus:border-brand">
+                  <option value="">Selecione</option>
+                  {paymentMethods.map((method) => (
+                    <option key={method.id} value={method.id}>{method.name}</option>
+                  ))}
+                </select>
+              </label>
+              <Field label="Dia do vencimento" name="dueDay" type="number" defaultValue={editingRecurring ? String(editingRecurring.dueDay) : "10"} required />
+              <label className="text-sm">
+                <span className="mb-1 block font-medium">Tipo de valor</span>
+                <select name="valueType" defaultValue={editingRecurring?.valueType ?? "variable"} className="h-10 w-full rounded-md border border-input bg-background px-3 outline-none focus:border-brand">
+                  <option value="variable">Variável</option>
+                  <option value="fixed">Fixo</option>
+                </select>
+              </label>
+              <Field
+                label="Valor padrão"
+                name="amount"
+                defaultValue={editingRecurring?.valueType === "fixed" ? formatMoneyInput(String(Math.round(Number(editingRecurring.amount || 0) * 100))) : "R$ 0,00"}
+                mask={formatMoneyInput}
+              />
+              <label className="text-sm">
+                <span className="mb-1 block font-medium">Repetição</span>
+                <select name="recurrence" defaultValue={editingRecurring?.recurrence ?? "monthly"} className="h-10 w-full rounded-md border border-input bg-background px-3 outline-none focus:border-brand">
+                  <option value="monthly">Mensal</option>
+                  <option value="yearly">Anual</option>
+                </select>
+              </label>
+              <div className="md:col-span-2">
+                <label className="text-sm">
+                  <span className="mb-1 block font-medium">Observações</span>
+                  <input name="notes" defaultValue={editingRecurring?.notes ?? ""} className="h-10 w-full rounded-md border border-input bg-background px-3 outline-none focus:border-brand" />
+                </label>
+              </div>
+              <div className="flex justify-end gap-2 border-t border-border pt-4 md:col-span-2">
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => setRecurringOpen(false)}
+                  className="inline-flex h-10 items-center rounded-md border border-border px-4 text-sm font-semibold transition hover:bg-secondary disabled:opacity-60"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-brand-dark disabled:opacity-60"
+                >
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingRecurring ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                  {editingRecurring ? "Salvar recorrente" : "Cadastrar recorrente"}
                 </button>
               </div>
             </form>

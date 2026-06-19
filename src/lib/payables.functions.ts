@@ -246,6 +246,131 @@ export const listPayablesFn = createServerFn({ method: "GET" }).handler(async ()
   `);
 });
 
+export const listRecurringPayablesFn = createServerFn({ method: "GET" }).handler(async () => {
+  await requirePayablesUser();
+  return mysqlQuery<{
+    id: number;
+    supplierId: number | null;
+    supplierName: string | null;
+    categoryId: number | null;
+    categoryName: string | null;
+    paymentMethodId: number | null;
+    paymentMethod: string | null;
+    description: string;
+    dueDay: number;
+    valueType: "fixed" | "variable";
+    amount: number | null;
+    recurrence: "monthly" | "yearly";
+    status: "active" | "inactive";
+    notes: string | null;
+  }>(`
+    SELECT
+      r.id,
+      r.supplier_id AS supplierId,
+      s.name AS supplierName,
+      r.category_id AS categoryId,
+      c.name AS categoryName,
+      r.payment_method_id AS paymentMethodId,
+      pm.name AS paymentMethod,
+      r.description,
+      r.due_day AS dueDay,
+      r.value_type AS valueType,
+      r.amount,
+      r.recurrence,
+      r.status,
+      r.notes
+    FROM a2_payable_recurring_rules r
+    LEFT JOIN a2_suppliers s ON s.id = r.supplier_id
+    LEFT JOIN a2_supplier_categories c ON c.id = r.category_id
+    LEFT JOIN a2_payment_methods pm ON pm.id = r.payment_method_id
+    ORDER BY r.status ASC, r.due_day ASC, r.description ASC
+  `);
+});
+
+const recurringPayload = z.object({
+  supplierId: numberFromForm.optional(),
+  categoryId: numberFromForm.optional(),
+  paymentMethodId: numberFromForm.optional(),
+  description: z.string().trim().min(2),
+  dueDay: numberFromForm.refine((value) => value >= 1 && value <= 31, "Dia de vencimento deve ser entre 1 e 31."),
+  valueType: z.enum(["fixed", "variable"]).default("variable"),
+  amount: numberFromForm.optional(),
+  recurrence: z.enum(["monthly", "yearly"]).default("monthly"),
+  notes: z.string().trim().optional(),
+});
+
+export const createRecurringPayableFn = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => recurringPayload.parse(data))
+  .handler(async ({ data }) => {
+    const user = await requirePayablesUser();
+    const result: any = await mysqlExec(
+      `INSERT INTO a2_payable_recurring_rules
+        (supplier_id, category_id, payment_method_id, description, due_day, value_type, amount, recurrence, notes, created_by)
+       VALUES
+        (:supplierId, :categoryId, :paymentMethodId, :description, :dueDay, :valueType, :amount, :recurrence, :notes, :createdBy)`,
+      {
+        supplierId: data.supplierId || null,
+        categoryId: data.categoryId || null,
+        paymentMethodId: data.paymentMethodId || null,
+        description: data.description,
+        dueDay: data.dueDay,
+        valueType: data.valueType,
+        amount: data.valueType === "fixed" ? data.amount || 0 : null,
+        recurrence: data.recurrence,
+        notes: data.notes || null,
+        createdBy: user.email,
+      },
+    );
+    return { ok: true, id: Number(result.insertId ?? 0) };
+  });
+
+export const updateRecurringPayableFn = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) =>
+    recurringPayload.extend({ id: z.number().int().positive() }).parse(data),
+  )
+  .handler(async ({ data }) => {
+    await requirePayablesUser();
+    await mysqlExec(
+      `UPDATE a2_payable_recurring_rules
+       SET supplier_id = :supplierId,
+           category_id = :categoryId,
+           payment_method_id = :paymentMethodId,
+           description = :description,
+           due_day = :dueDay,
+           value_type = :valueType,
+           amount = :amount,
+           recurrence = :recurrence,
+           notes = :notes
+       WHERE id = :id`,
+      {
+        id: data.id,
+        supplierId: data.supplierId || null,
+        categoryId: data.categoryId || null,
+        paymentMethodId: data.paymentMethodId || null,
+        description: data.description,
+        dueDay: data.dueDay,
+        valueType: data.valueType,
+        amount: data.valueType === "fixed" ? data.amount || 0 : null,
+        recurrence: data.recurrence,
+        notes: data.notes || null,
+      },
+    );
+    return { ok: true };
+  });
+
+export const updateRecurringPayableStatusFn = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) =>
+    z.object({ id: z.number().int().positive(), status: z.enum(["active", "inactive"]) }).parse(data),
+  )
+  .handler(async ({ data }) => {
+    await requirePayablesUser();
+    await mysqlExec(
+      "UPDATE a2_payable_recurring_rules SET status = :status WHERE id = :id",
+      { id: data.id, status: data.status },
+    );
+    return { ok: true };
+  });
+
 export const createPayableFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) =>
     z
