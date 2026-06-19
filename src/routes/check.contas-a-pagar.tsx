@@ -127,7 +127,7 @@ function CheckPayablesPage() {
           supplierId: Number(form.get("supplierId") || 0) || undefined,
           categoryId: Number(form.get("categoryId") || 0) || undefined,
           description: String(form.get("description") || ""),
-          amount: Number(String(form.get("amount") || "0").replace(",", ".")),
+          amount: parseMoneyBR(String(form.get("amount") || "0")),
           dueDate: String(form.get("dueDate") || ""),
           competency: String(form.get("competency") || ""),
           recurrence: String(form.get("recurrence") || "none") as "none" | "monthly" | "yearly",
@@ -345,7 +345,7 @@ function CheckPayablesPage() {
                   ))}
                 </select>
               </label>
-              <Field label="Valor" name="amount" type="number" step="0.01" required />
+              <Field label="Valor" name="amount" defaultValue="R$ 0,00" mask={formatMoneyInput} required />
               <Field label="Vencimento" name="dueDate" type="date" required />
               <Field label="Competência" name="competency" type="date" />
               <label className="text-sm">
@@ -464,7 +464,23 @@ function SummaryCard({
   );
 }
 
-function Field({ label, name, type = "text", step, required = false }: { label: string; name: string; type?: string; step?: string; required?: boolean }) {
+function Field({
+  label,
+  name,
+  type = "text",
+  step,
+  defaultValue = "",
+  mask,
+  required = false,
+}: {
+  label: string;
+  name: string;
+  type?: string;
+  step?: string;
+  defaultValue?: string;
+  mask?: (value: string) => string;
+  required?: boolean;
+}) {
   return (
     <label className="text-sm">
       <span className="mb-1 block font-medium">{label}</span>
@@ -472,11 +488,28 @@ function Field({ label, name, type = "text", step, required = false }: { label: 
         name={name}
         type={type}
         step={step}
+        defaultValue={defaultValue}
+        onInput={(event) => {
+          if (!mask) return;
+          event.currentTarget.value = mask(event.currentTarget.value);
+        }}
         required={required}
         className="h-10 w-full rounded-md border border-input bg-background px-3 outline-none focus:border-brand"
       />
     </label>
   );
+}
+
+function parseMoneyBR(value: string) {
+  const digits = value.replace(/\D/g, "");
+  return Number(digits || 0) / 100;
+}
+
+function formatMoneyInput(value: string) {
+  return parseMoneyBR(value).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
 }
 
 function IconButton({ title, disabled, onClick, children }: { title: string; disabled?: boolean; onClick: () => void; children: ReactNode }) {
