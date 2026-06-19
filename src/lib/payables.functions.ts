@@ -48,6 +48,30 @@ export const createSupplierCategoryFn = createServerFn({ method: "POST" })
     return { ok: true, id: Number(result.insertId ?? 0) };
   });
 
+export const listPaymentMethodsFn = createServerFn({ method: "GET" }).handler(async () => {
+  await requirePayablesUser();
+  return mysqlQuery<{ id: number; name: string; status: "active" | "inactive" }>(
+    "SELECT id, name, status FROM a2_payment_methods WHERE status = 'active' ORDER BY name",
+  );
+});
+
+export const createPaymentMethodFn = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        name: z.string().trim().min(2, "Informe o nome da forma de pagamento."),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data }) => {
+    await requirePayablesUser();
+    const result: any = await mysqlExec(
+      "INSERT INTO a2_payment_methods (name) VALUES (:name)",
+      { name: data.name },
+    );
+    return { ok: true, id: Number(result.insertId ?? 0) };
+  });
+
 export const listSuppliersFn = createServerFn({ method: "GET" }).handler(async () => {
   await requirePayablesUser();
   return mysqlQuery<{
@@ -179,6 +203,7 @@ export const listPayablesFn = createServerFn({ method: "GET" }).handler(async ()
     competency: string | null;
     status: "open" | "paid" | "overdue" | "cancelled";
     recurrence: "none" | "monthly" | "yearly";
+    paymentMethodId: number | null;
     paymentMethod: string | null;
     paidAt: string | null;
     notes: string | null;
@@ -197,12 +222,14 @@ export const listPayablesFn = createServerFn({ method: "GET" }).handler(async ()
         ELSE p.status
       END AS status,
       p.recurrence,
-      p.payment_method AS paymentMethod,
+      p.payment_method_id AS paymentMethodId,
+      COALESCE(pm.name, p.payment_method) AS paymentMethod,
       DATE_FORMAT(p.paid_at, '%Y-%m-%d') AS paidAt,
       p.notes
     FROM a2_payables p
     LEFT JOIN a2_suppliers s ON s.id = p.supplier_id
     LEFT JOIN a2_supplier_categories c ON c.id = p.category_id
+    LEFT JOIN a2_payment_methods pm ON pm.id = p.payment_method_id
     ORDER BY p.due_date ASC, p.id DESC
   `);
 });
@@ -218,6 +245,7 @@ export const createPayableFn = createServerFn({ method: "POST" })
         dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
         competency: z.string().optional(),
         recurrence: z.enum(["none", "monthly", "yearly"]).default("none"),
+        paymentMethodId: numberFromForm.optional(),
         paymentMethod: z.string().trim().optional(),
         notes: z.string().trim().optional(),
       })
@@ -227,9 +255,9 @@ export const createPayableFn = createServerFn({ method: "POST" })
     const user = await requirePayablesUser();
     const result: any = await mysqlExec(
       `INSERT INTO a2_payables
-        (supplier_id, category_id, description, amount, due_date, competency, recurrence, payment_method, notes, created_by)
+        (supplier_id, category_id, description, amount, due_date, competency, recurrence, payment_method_id, payment_method, notes, created_by)
        VALUES
-        (:supplierId, :categoryId, :description, :amount, :dueDate, :competency, :recurrence, :paymentMethod, :notes, :createdBy)`,
+        (:supplierId, :categoryId, :description, :amount, :dueDate, :competency, :recurrence, :paymentMethodId, :paymentMethod, :notes, :createdBy)`,
       {
         supplierId: data.supplierId || null,
         categoryId: data.categoryId || null,
@@ -238,6 +266,7 @@ export const createPayableFn = createServerFn({ method: "POST" })
         dueDate: data.dueDate,
         competency: data.competency || null,
         recurrence: data.recurrence,
+        paymentMethodId: data.paymentMethodId || null,
         paymentMethod: data.paymentMethod || null,
         notes: data.notes || null,
         createdBy: user.email,

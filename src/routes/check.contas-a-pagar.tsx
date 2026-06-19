@@ -5,8 +5,10 @@ import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { CheckLayout } from "@/components/check/CheckLayout";
 import { checkMeFn } from "@/lib/check.functions";
 import {
+  createPaymentMethodFn,
   createPayableFn,
   listPayablesFn,
+  listPaymentMethodsFn,
   listSupplierCategoriesFn,
   listSuppliersFn,
   updatePayableStatusFn,
@@ -16,12 +18,13 @@ import { formatDateBR, formatMoneyBR } from "@/lib/format";
 const opts = {
   queryKey: ["check-payables"],
   queryFn: async () => {
-    const [payables, suppliers, categories] = await Promise.all([
+    const [payables, suppliers, categories, paymentMethods] = await Promise.all([
       listPayablesFn(),
       listSuppliersFn(),
       listSupplierCategoriesFn(),
+      listPaymentMethodsFn(),
     ]);
-    return { payables, suppliers, categories };
+    return { payables, suppliers, categories, paymentMethods };
   },
 };
 
@@ -51,6 +54,7 @@ export const Route = createFileRoute("/check/contas-a-pagar")({
         payables: [],
         suppliers: [],
         categories: [],
+        paymentMethods: [],
         payablesLoadError: error instanceof Error ? error.message : "Nao foi possivel carregar as contas a pagar.",
       };
     }
@@ -61,8 +65,10 @@ export const Route = createFileRoute("/check/contas-a-pagar")({
 function CheckPayablesPage() {
   const initial = Route.useLoaderData();
   const createPayable = useServerFn(createPayableFn);
+  const createPaymentMethod = useServerFn(createPaymentMethodFn);
   const updateStatus = useServerFn(updatePayableStatusFn);
   const [payables, setPayables] = useState(initial.payables);
+  const [paymentMethods, setPaymentMethods] = useState(initial.paymentMethods);
   const [term, setTerm] = useState("");
   const [status, setStatus] = useState("");
   const [dateFrom, setDateFrom] = useState("");
@@ -70,6 +76,10 @@ function CheckPayablesPage() {
   const [saving, setSaving] = useState(false);
   const [actionId, setActionId] = useState<number | null>(null);
   const [newAccountOpen, setNewAccountOpen] = useState(false);
+  const [newPaymentMethodOpen, setNewPaymentMethodOpen] = useState(false);
+  const [newPaymentMethodName, setNewPaymentMethodName] = useState("");
+  const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState("");
+  const [savingPaymentMethod, setSavingPaymentMethod] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
 
@@ -109,7 +119,8 @@ function CheckPayablesPage() {
     setSaving(true);
     setNotice("");
     setError("");
-    const form = new FormData(event.currentTarget);
+    const formEl = event.currentTarget;
+    const form = new FormData(formEl);
     try {
       await createPayable({
         data: {
@@ -120,18 +131,40 @@ function CheckPayablesPage() {
           dueDate: String(form.get("dueDate") || ""),
           competency: String(form.get("competency") || ""),
           recurrence: String(form.get("recurrence") || "none") as "none" | "monthly" | "yearly",
-          paymentMethod: String(form.get("paymentMethod") || ""),
+          paymentMethodId: Number(form.get("paymentMethodId") || 0) || undefined,
           notes: String(form.get("notes") || ""),
         },
       });
       await refresh();
-      event.currentTarget.reset();
+      formEl.reset();
+      setSelectedPaymentMethodId("");
+      setNewPaymentMethodOpen(false);
+      setNewPaymentMethodName("");
       setNewAccountOpen(false);
       setNotice("Conta cadastrada com sucesso.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Nao foi possivel salvar a conta.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const addPaymentMethod = async () => {
+    setSavingPaymentMethod(true);
+    setNotice("");
+    setError("");
+    try {
+      const result = await createPaymentMethod({ data: { name: newPaymentMethodName } });
+      const nextMethods = await listPaymentMethodsFn();
+      setPaymentMethods(nextMethods);
+      setSelectedPaymentMethodId(String(result.id || nextMethods.find((method) => method.name === newPaymentMethodName.trim())?.id || ""));
+      setNewPaymentMethodName("");
+      setNewPaymentMethodOpen(false);
+      setNotice("Forma de pagamento cadastrada com sucesso.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Nao foi possivel salvar a forma de pagamento.");
+    } finally {
+      setSavingPaymentMethod(false);
     }
   };
 
@@ -175,6 +208,9 @@ function CheckPayablesPage() {
               onClick={() => {
                 setError("");
                 setNotice("");
+                setSelectedPaymentMethodId("");
+                setNewPaymentMethodOpen(false);
+                setNewPaymentMethodName("");
                 setNewAccountOpen(true);
               }}
               className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-brand-dark"
@@ -215,7 +251,7 @@ function CheckPayablesPage() {
               <table className="w-full text-sm">
                 <thead className="bg-muted/50 text-xs uppercase tracking-wider text-muted-foreground">
                   <tr>
-                    {["Descrição", "Fornecedor", "Vencimento", "Valor", "Status", "Recorrência", "Ações"].map((header) => (
+                    {["Descrição", "Fornecedor", "Vencimento", "Valor", "Pagamento", "Status", "Recorrência", "Ações"].map((header) => (
                       <th key={header} className="px-5 py-3 text-left font-medium">{header}</th>
                     ))}
                   </tr>
@@ -230,6 +266,7 @@ function CheckPayablesPage() {
                       <td className="px-5 py-4 text-muted-foreground">{payable.supplierName || "—"}</td>
                       <td className="px-5 py-4 text-muted-foreground">{formatDateBR(payable.dueDate)}</td>
                       <td className="px-5 py-4 font-semibold">{formatMoneyBR(payable.amount)}</td>
+                      <td className="px-5 py-4 text-muted-foreground">{payable.paymentMethod || "—"}</td>
                       <td className="px-5 py-4">
                         <span className={`rounded-full px-2 py-1 text-xs font-semibold ${statusClass(payable.status)}`}>
                           {statusLabels[payable.status] || payable.status}
@@ -311,7 +348,56 @@ function CheckPayablesPage() {
               <Field label="Valor" name="amount" type="number" step="0.01" required />
               <Field label="Vencimento" name="dueDate" type="date" required />
               <Field label="Competência" name="competency" type="date" />
-              <Field label="Forma de pagamento" name="paymentMethod" />
+              <label className="text-sm">
+                <span className="mb-1 block font-medium">Forma de pagamento</span>
+                <div className="flex gap-2">
+                  <select
+                    name="paymentMethodId"
+                    value={selectedPaymentMethodId}
+                    onChange={(event) => setSelectedPaymentMethodId(event.target.value)}
+                    className="h-10 min-w-0 flex-1 rounded-md border border-input bg-background px-3 outline-none focus:border-brand"
+                  >
+                    <option value="">Selecione</option>
+                    {paymentMethods.map((method) => (
+                      <option key={method.id} value={method.id}>{method.name}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setNewPaymentMethodOpen((value) => !value)}
+                    className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-border text-foreground transition hover:bg-secondary"
+                    title="Nova forma de pagamento"
+                    aria-label="Nova forma de pagamento"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
+                {newPaymentMethodOpen && (
+                  <div className="mt-2 flex gap-2">
+                    <input
+                      value={newPaymentMethodName}
+                      onChange={(event) => setNewPaymentMethodName(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          if (!savingPaymentMethod) void addPaymentMethod();
+                        }
+                      }}
+                      className="h-10 min-w-0 flex-1 rounded-md border border-input bg-background px-3 outline-none focus:border-brand"
+                      placeholder="Nome da forma"
+                    />
+                    <button
+                      type="button"
+                      disabled={savingPaymentMethod}
+                      onClick={addPaymentMethod}
+                      className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground transition hover:bg-brand-dark disabled:opacity-60"
+                    >
+                      {savingPaymentMethod ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                      Salvar
+                    </button>
+                  </div>
+                )}
+              </label>
               <label className="text-sm">
                 <span className="mb-1 block font-medium">Recorrência</span>
                 <select name="recurrence" className="h-10 w-full rounded-md border border-input bg-background px-3 outline-none focus:border-brand">
