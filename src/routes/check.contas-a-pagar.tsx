@@ -109,6 +109,10 @@ function CheckPayablesPage() {
   const [settlePaymentMethodId, setSettlePaymentMethodId] = useState("");
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const settlementBaseAmount = settlingPayable ? Number(settlingPayable.amount || 0) : 0;
+  const settlementInterestAmount = parseMoneyBR(settleInterest);
+  const settlementDiscountAmount = parseMoneyBR(settleDiscount);
+  const settlementPaidAmount = Math.max(settlementBaseAmount + settlementInterestAmount - settlementDiscountAmount, 0);
 
   const filtered = useMemo(() => {
     const q = term.toLowerCase().trim();
@@ -801,10 +805,12 @@ function CheckPayablesPage() {
             <form onSubmit={submitSettlement} className="grid gap-4 p-5 md:grid-cols-2">
               <div className="rounded-md border border-border bg-muted/30 p-4 md:col-span-2">
                 <p className="text-sm font-semibold">{settlingPayable.description}</p>
-                <p className="mt-1 text-sm text-muted-foreground">Valor original: {formatMoneyBR(settlingPayable.amount)}</p>
-                <p className="mt-1 text-sm font-semibold">
-                  Valor final: {formatMoneyBR(Math.max(Number(settlingPayable.amount) + parseMoneyBR(settleInterest) - parseMoneyBR(settleDiscount), 0))}
-                </p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <PaymentPreview label="Valor" value={settlementBaseAmount} />
+                  <PaymentPreview label="Juros" value={settlementInterestAmount} tone="danger" />
+                  <PaymentPreview label="Desconto" value={settlementDiscountAmount} tone="success" />
+                  <PaymentPreview label="Valor pago" value={settlementPaidAmount} tone="primary" />
+                </div>
               </div>
               <Field label="Data do pagamento" name="paidAt" type="date" defaultValue={settlePaidAt} required />
               <label className="text-sm">
@@ -938,6 +944,30 @@ function MoneyField({
         className="h-10 w-full rounded-md border border-input bg-background px-3 outline-none focus:border-brand"
       />
     </label>
+  );
+}
+
+function PaymentPreview({
+  label,
+  value,
+  tone = "default",
+}: {
+  label: string;
+  value: number;
+  tone?: "default" | "success" | "danger" | "primary";
+}) {
+  const toneClass = {
+    default: "text-foreground",
+    success: "text-emerald-700",
+    danger: "text-red-700",
+    primary: "text-brand",
+  }[tone];
+
+  return (
+    <div className="rounded-md border border-border bg-background p-3">
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className={`mt-1 whitespace-nowrap text-lg font-bold ${toneClass}`}>{formatMoneyBR(value)}</p>
+    </div>
   );
 }
 
