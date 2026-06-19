@@ -158,7 +158,7 @@ function CheckPayablesPage() {
     const paid = payables.filter((item) => item.status === "paid");
     return {
       open: open.reduce((total, item) => total + Number(item.amount), 0),
-      paid: paid.reduce((total, item) => total + Number(item.amount), 0),
+      paid: paid.reduce((total, item) => total + Number(item.paidAmount || item.amount), 0),
       overdue: payables.filter((item) => item.status === "overdue").reduce((total, item) => total + Number(item.amount), 0),
     };
   }, [payables]);

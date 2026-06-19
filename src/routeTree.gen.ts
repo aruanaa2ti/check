@@ -29,6 +29,7 @@ import { Route as ClienteDominiosRouteImport } from './routes/cliente_.dominios'
 import { Route as ClienteDashboardRouteImport } from './routes/cliente_.dashboard'
 import { Route as ClienteChamadosRouteImport } from './routes/cliente_.chamados'
 import { Route as CheckServicosRouteImport } from './routes/check.servicos'
+import { Route as CheckResultadoRouteImport } from './routes/check.resultado'
 import { Route as CheckLoginRouteImport } from './routes/check.login'
 import { Route as CheckFornecedoresRouteImport } from './routes/check.fornecedores'
 import { Route as CheckDominiosRouteImport } from './routes/check.dominios'
@@ -144,6 +145,11 @@ const CheckServicosRoute = CheckServicosRouteImport.update({
   path: '/servicos',
   getParentRoute: () => CheckRoute,
 } as any)
+const CheckResultadoRoute = CheckResultadoRouteImport.update({
+  id: '/resultado',
+  path: '/resultado',
+  getParentRoute: () => CheckRoute,
+} as any)
 const CheckLoginRoute = CheckLoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -245,6 +251,7 @@ export interface FileRoutesByFullPath {
   '/check/dominios': typeof CheckDominiosRoute
   '/check/fornecedores': typeof CheckFornecedoresRoute
   '/check/login': typeof CheckLoginRoute
+  '/check/resultado': typeof CheckResultadoRoute
   '/check/servicos': typeof CheckServicosRoute
   '/cliente/chamados': typeof ClienteChamadosRoute
   '/cliente/dashboard': typeof ClienteDashboardRoute
@@ -280,6 +287,7 @@ export interface FileRoutesByTo {
   '/check/dominios': typeof CheckDominiosRoute
   '/check/fornecedores': typeof CheckFornecedoresRoute
   '/check/login': typeof CheckLoginRoute
+  '/check/resultado': typeof CheckResultadoRoute
   '/check/servicos': typeof CheckServicosRoute
   '/cliente/chamados': typeof ClienteChamadosRoute
   '/cliente/dashboard': typeof ClienteDashboardRoute
@@ -318,6 +326,7 @@ export interface FileRoutesById {
   '/check/dominios': typeof CheckDominiosRoute
   '/check/fornecedores': typeof CheckFornecedoresRoute
   '/check/login': typeof CheckLoginRoute
+  '/check/resultado': typeof CheckResultadoRoute
   '/check/servicos': typeof CheckServicosRoute
   '/cliente_/chamados': typeof ClienteChamadosRoute
   '/cliente_/dashboard': typeof ClienteDashboardRoute
@@ -356,6 +365,7 @@ export interface FileRouteTypes {
     | '/check/dominios'
     | '/check/fornecedores'
     | '/check/login'
+    | '/check/resultado'
     | '/check/servicos'
     | '/cliente/chamados'
     | '/cliente/dashboard'
@@ -391,6 +401,7 @@ export interface FileRouteTypes {
     | '/check/dominios'
     | '/check/fornecedores'
     | '/check/login'
+    | '/check/resultado'
     | '/check/servicos'
     | '/cliente/chamados'
     | '/cliente/dashboard'
@@ -428,6 +439,7 @@ export interface FileRouteTypes {
     | '/check/dominios'
     | '/check/fornecedores'
     | '/check/login'
+    | '/check/resultado'
     | '/check/servicos'
     | '/cliente_/chamados'
     | '/cliente_/dashboard'
@@ -603,6 +615,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CheckServicosRouteImport
       parentRoute: typeof CheckRoute
     }
+    '/check/resultado': {
+      id: '/check/resultado'
+      path: '/resultado'
+      fullPath: '/check/resultado'
+      preLoaderRoute: typeof CheckResultadoRouteImport
+      parentRoute: typeof CheckRoute
+    }
     '/check/login': {
       id: '/check/login'
       path: '/login'
@@ -752,6 +771,7 @@ interface CheckRouteChildren {
   CheckDominiosRoute: typeof CheckDominiosRoute
   CheckFornecedoresRoute: typeof CheckFornecedoresRoute
   CheckLoginRoute: typeof CheckLoginRoute
+  CheckResultadoRoute: typeof CheckResultadoRoute
   CheckServicosRoute: typeof CheckServicosRoute
   CheckIndexRoute: typeof CheckIndexRoute
 }
@@ -764,6 +784,7 @@ const CheckRouteChildren: CheckRouteChildren = {
   CheckDominiosRoute: CheckDominiosRoute,
   CheckFornecedoresRoute: CheckFornecedoresRoute,
   CheckLoginRoute: CheckLoginRoute,
+  CheckResultadoRoute: CheckResultadoRoute,
   CheckServicosRoute: CheckServicosRoute,
   CheckIndexRoute: CheckIndexRoute,
 }

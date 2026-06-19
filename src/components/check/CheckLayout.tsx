@@ -30,6 +30,7 @@ const NAV = [
     children: [
       { to: "/check/contas-a-receber", label: "Contas a Receber", icon: Receipt },
       { to: "/check/contas-a-pagar", label: "Contas a Pagar", icon: WalletCards },
+      { to: "/check/resultado", label: "Resultado", icon: LayoutDashboard },
     ],
   },
   { to: "/check/fornecedores", label: "Fornecedores", icon: Building2 },

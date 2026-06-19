@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { checkSession, requireCheckUser } from "./session.server";
 import { queryRegistroBr, resolveDomainDns } from "./domain-check.server";
+import { mysqlQuery } from "./mysql.server";
 import {
   whmcsAddTicketReply,
   whmcsBuildSummary,
@@ -155,6 +156,48 @@ const transactionSummary = (transaction: any) => ({
   amountOut: moneyNumber(transaction.amountout ?? transaction.amount_out),
   fees: moneyNumber(transaction.fees),
 });
+
+function buildMonthBuckets(count: number) {
+  const formatter = new Intl.DateTimeFormat("pt-BR", { month: "short", year: "numeric" });
+  const today = new Date();
+  const buckets = [];
+  for (let index = count - 1; index >= 0; index -= 1) {
+    const start = new Date(today.getFullYear(), today.getMonth() - index, 1);
+    const end = new Date(today.getFullYear(), today.getMonth() - index + 1, 0);
+    buckets.push({
+      key: `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}`,
+      label: formatter.format(start).replace(".", ""),
+      start: formatIsoDate(start),
+      end: formatIsoDate(end),
+    });
+  }
+  return buckets;
+}
+
+function formatIsoDate(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function isDateInRange(value: string, from: string, to: string) {
+  const normalized = normalizeDate(value);
+  if (!normalized) return false;
+  return (!from || normalized >= from) && (!to || normalized <= to);
+}
+
+function normalizeDate(value: string) {
+  if (!value) return "";
+  const datePart = String(value).split(" ")[0] || "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) return datePart;
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(datePart)) {
+    const [day, month, year] = datePart.split("/");
+    return `${year}-${month}-${day}`;
+  }
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? "" : formatIsoDate(parsed);
+}
 
 const contactSummary = (contact: any) => ({
   id: Number(contact.id ?? 0),
@@ -633,6 +676,56 @@ export const checkFinanceOverviewFn = createServerFn({ method: "GET" }).handler(
     totalReceived: statMoney(stats, ["income_alltime", "income_all_time", "alltimeincome", "all_time_income", "total_income"]),
   };
 });
+
+export const checkFinancialResultFn = createServerFn({ method: "GET" })
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        months: z.number().int().min(1).max(24).default(3),
+      })
+      .parse(data ?? {}),
+  )
+  .handler(async ({ data }) => {
+    const me = await requireCheckUser();
+    const canViewFinance = canViewCheckFinance(me);
+    if (!canViewFinance) {
+      return { canViewFinance, months: [] };
+    }
+
+    const months = buildMonthBuckets(data.months);
+    const from = months[0]?.start ?? "";
+    const to = months[months.length - 1]?.end ?? "";
+    const [transactions, payables] = await Promise.all([
+      fallback(whmcsGetTransactions(undefined, 1000), [], "GetTransactions result"),
+      mysqlQuery<{ paidAt: string; paidAmount: number }>(
+        `SELECT DATE_FORMAT(paid_at, '%Y-%m-%d') AS paidAt, paid_amount AS paidAmount
+         FROM a2_payable_payments
+         WHERE paid_at BETWEEN :fromDate AND :toDate`,
+        { fromDate: from, toDate: to },
+      ),
+    ]);
+
+    const result = months.map((month) => {
+      const income = transactions
+        .map(transactionSummary)
+        .filter((transaction) => isDateInRange(transaction.date, month.start, month.end))
+        .reduce((total, transaction) => total + Number(transaction.amountIn || 0), 0);
+      const expenses = payables
+        .filter((payable) => isDateInRange(payable.paidAt, month.start, month.end))
+        .reduce((total, payable) => total + Number(payable.paidAmount || 0), 0);
+      return {
+        key: month.key,
+        label: month.label,
+        start: month.start,
+        end: month.end,
+        income,
+        expenses,
+        result: income - expenses,
+      };
+    });
+
+    return { canViewFinance, months: result };
+  });
 
 export const checkCreateInvoiceFn = createServerFn({ method: "POST" })
   .inputValidator((d: { clientId: number; description: string; amount: number; dueDate: string; sendInvoice?: boolean }) =>
