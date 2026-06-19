@@ -367,23 +367,6 @@ function CheckPayablesPage() {
             {initial.payablesLoadError}
           </section>
         )}
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setActiveTab("accounts")}
-            className={`h-10 rounded-md px-4 text-sm font-semibold transition ${activeTab === "accounts" ? "bg-primary text-primary-foreground" : "border border-border bg-card hover:bg-secondary"}`}
-          >
-            Contas
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("recurring")}
-            className={`h-10 rounded-md px-4 text-sm font-semibold transition ${activeTab === "recurring" ? "bg-primary text-primary-foreground" : "border border-border bg-card hover:bg-secondary"}`}
-          >
-            Recorrentes
-          </button>
-        </div>
-
         {activeTab === "accounts" && (
           <section className="grid gap-4 md:grid-cols-3">
             <SummaryCard label="Em aberto" value={formatMoneyBR(totals.open)} />
@@ -394,14 +377,32 @@ function CheckPayablesPage() {
 
         <section className="card-soft overflow-hidden">
           <div className="flex flex-col gap-3 border-b border-border bg-muted/30 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2">
-              <WalletCards className="h-4 w-4" />
-              <h2 className="text-base font-bold">{activeTab === "accounts" ? "Contas" : "Recorrentes"}</h2>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="flex items-center gap-2">
+                <WalletCards className="h-4 w-4" />
+                <h2 className="text-base font-bold">Contas a Pagar</h2>
+              </div>
+              <div className="inline-flex w-fit rounded-md border border-border bg-background p-1">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("accounts")}
+                  className={`h-8 rounded px-3 text-xs font-semibold transition ${activeTab === "accounts" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}
+                >
+                  Contas
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("recurring")}
+                  className={`h-8 rounded px-3 text-xs font-semibold transition ${activeTab === "recurring" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}
+                >
+                  Recorrentes
+                </button>
+              </div>
             </div>
             <button
               type="button"
               onClick={activeTab === "accounts" ? openNewAccount : openNewRecurring}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-brand-dark"
+              className="inline-flex h-10 w-fit shrink-0 items-center justify-center gap-2 self-start rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-brand-dark sm:self-auto"
             >
               <Plus className="h-4 w-4" />
               {activeTab === "accounts" ? "Nova Conta" : "Novo Recorrente"}
