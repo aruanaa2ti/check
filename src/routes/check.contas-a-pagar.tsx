@@ -1,6 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { CheckCircle, Loader2, Plus, RotateCcw, WalletCards, XCircle } from "lucide-react";
+import { CheckCircle, Loader2, Plus, RotateCcw, WalletCards, X, XCircle } from "lucide-react";
 import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { CheckLayout } from "@/components/check/CheckLayout";
 import { checkMeFn } from "@/lib/check.functions";
@@ -67,6 +67,7 @@ function CheckPayablesPage() {
   const [status, setStatus] = useState("");
   const [saving, setSaving] = useState(false);
   const [actionId, setActionId] = useState<number | null>(null);
+  const [newAccountOpen, setNewAccountOpen] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
 
@@ -119,6 +120,7 @@ function CheckPayablesPage() {
       });
       await refresh();
       event.currentTarget.reset();
+      setNewAccountOpen(false);
       setNotice("Conta cadastrada com sucesso.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Nao foi possivel salvar a conta.");
@@ -157,65 +159,29 @@ function CheckPayablesPage() {
         </section>
 
         <section className="card-soft overflow-hidden">
-          <Header icon={<WalletCards className="h-4 w-4" />} title="Nova conta" />
+          <div className="flex flex-col gap-3 border-b border-border bg-muted/30 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2">
+              <WalletCards className="h-4 w-4" />
+              <h2 className="text-base font-bold">Contas</h2>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setError("");
+                setNotice("");
+                setNewAccountOpen(true);
+              }}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-brand-dark"
+            >
+              <Plus className="h-4 w-4" />
+              Nova Conta
+            </button>
+          </div>
           {(notice || error) && (
             <div className={`border-b px-5 py-3 text-sm ${error ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`}>
               {error || notice}
             </div>
           )}
-          <form onSubmit={onSubmit} className="grid gap-4 p-5 md:grid-cols-2 xl:grid-cols-4">
-            <Field label="Descrição" name="description" required />
-            <label className="text-sm">
-              <span className="mb-1 block font-medium">Fornecedor</span>
-              <select name="supplierId" className="h-10 w-full rounded-md border border-input bg-background px-3 outline-none focus:border-brand">
-                <option value="">Sem fornecedor</option>
-                {initial.suppliers.map((supplier) => (
-                  <option key={supplier.id} value={supplier.id}>{supplier.name}</option>
-                ))}
-              </select>
-            </label>
-            <label className="text-sm">
-              <span className="mb-1 block font-medium">Categoria</span>
-              <select name="categoryId" className="h-10 w-full rounded-md border border-input bg-background px-3 outline-none focus:border-brand">
-                <option value="">Sem categoria</option>
-                {initial.categories.map((category) => (
-                  <option key={category.id} value={category.id}>{category.name}</option>
-                ))}
-              </select>
-            </label>
-            <Field label="Valor" name="amount" type="number" step="0.01" required />
-            <Field label="Vencimento" name="dueDate" type="date" required />
-            <Field label="Competência" name="competency" type="date" />
-            <Field label="Forma de pagamento" name="paymentMethod" />
-            <label className="text-sm">
-              <span className="mb-1 block font-medium">Recorrência</span>
-              <select name="recurrence" className="h-10 w-full rounded-md border border-input bg-background px-3 outline-none focus:border-brand">
-                <option value="none">Unica</option>
-                <option value="monthly">Mensal</option>
-                <option value="yearly">Anual</option>
-              </select>
-            </label>
-            <div className="md:col-span-2 xl:col-span-4">
-              <label className="text-sm">
-                <span className="mb-1 block font-medium">Observações</span>
-                <input name="notes" className="h-10 w-full rounded-md border border-input bg-background px-3 outline-none focus:border-brand" />
-              </label>
-            </div>
-            <div className="md:col-span-2 xl:col-span-4">
-              <button
-                type="submit"
-                disabled={saving}
-                className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-brand-dark disabled:opacity-60"
-              >
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                Cadastrar conta
-              </button>
-            </div>
-          </form>
-        </section>
-
-        <section className="card-soft overflow-hidden">
-          <Header icon={<WalletCards className="h-4 w-4" />} title="Contas" />
           <div className="grid gap-3 border-b border-border p-4 md:grid-cols-[1fr_220px]">
             <input
               value={term}
@@ -290,6 +256,91 @@ function CheckPayablesPage() {
           )}
         </section>
       </div>
+
+      {newAccountOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-lg border border-border bg-card shadow-soft">
+            <div className="flex items-center justify-between border-b border-border px-5 py-4">
+              <div className="flex items-center gap-2">
+                <WalletCards className="h-4 w-4" />
+                <h2 className="text-base font-bold">Nova Conta</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!saving) setNewAccountOpen(false);
+                }}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+                aria-label="Fechar"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            {error && (
+              <div className="border-b border-red-200 bg-red-50 px-5 py-3 text-sm text-red-700">
+                {error}
+              </div>
+            )}
+            <form onSubmit={onSubmit} className="grid gap-4 p-5 md:grid-cols-2">
+              <Field label="Descrição" name="description" required />
+              <label className="text-sm">
+                <span className="mb-1 block font-medium">Fornecedor</span>
+                <select name="supplierId" className="h-10 w-full rounded-md border border-input bg-background px-3 outline-none focus:border-brand">
+                  <option value="">Sem fornecedor</option>
+                  {initial.suppliers.map((supplier) => (
+                    <option key={supplier.id} value={supplier.id}>{supplier.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-sm">
+                <span className="mb-1 block font-medium">Categoria</span>
+                <select name="categoryId" className="h-10 w-full rounded-md border border-input bg-background px-3 outline-none focus:border-brand">
+                  <option value="">Sem categoria</option>
+                  {initial.categories.map((category) => (
+                    <option key={category.id} value={category.id}>{category.name}</option>
+                  ))}
+                </select>
+              </label>
+              <Field label="Valor" name="amount" type="number" step="0.01" required />
+              <Field label="Vencimento" name="dueDate" type="date" required />
+              <Field label="Competência" name="competency" type="date" />
+              <Field label="Forma de pagamento" name="paymentMethod" />
+              <label className="text-sm">
+                <span className="mb-1 block font-medium">Recorrência</span>
+                <select name="recurrence" className="h-10 w-full rounded-md border border-input bg-background px-3 outline-none focus:border-brand">
+                  <option value="none">Unica</option>
+                  <option value="monthly">Mensal</option>
+                  <option value="yearly">Anual</option>
+                </select>
+              </label>
+              <div className="md:col-span-2">
+                <label className="text-sm">
+                  <span className="mb-1 block font-medium">Observações</span>
+                  <input name="notes" className="h-10 w-full rounded-md border border-input bg-background px-3 outline-none focus:border-brand" />
+                </label>
+              </div>
+              <div className="flex justify-end gap-2 border-t border-border pt-4 md:col-span-2">
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => setNewAccountOpen(false)}
+                  className="inline-flex h-10 items-center rounded-md border border-border px-4 text-sm font-semibold transition hover:bg-secondary disabled:opacity-60"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-brand-dark disabled:opacity-60"
+                >
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                  Cadastrar conta
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </CheckLayout>
   );
 }
