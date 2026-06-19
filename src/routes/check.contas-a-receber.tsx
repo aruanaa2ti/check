@@ -21,7 +21,7 @@ export const Route = createFileRoute("/check/contas-a-receber")({
     } catch (error) {
       return {
         me,
-        finance: { canViewFinance: me.canViewFinance, invoices: [] },
+        finance: { canViewFinance: me.canViewFinance, invoices: [], totalReceived: 0 },
         financeLoadError: error instanceof Error ? error.message : "Nao foi possivel carregar as contas a receber.",
       };
     }
@@ -46,6 +46,7 @@ function CheckFinancePage() {
   const overdueInvoices = finance.invoices.filter(isInvoiceOverdue);
   const openTotal = openInvoices.reduce((total, invoice) => total + invoiceAmountDue(invoice), 0);
   const paidTotal = paidInvoices.reduce((total, invoice) => total + invoice.total, 0);
+  const totalReceived = Number(finance.totalReceived || 0) || paidTotal;
   const overdueTotal = overdueInvoices.reduce((total, invoice) => total + invoiceAmountDue(invoice), 0);
 
   const filteredInvoices = useMemo(() => {
@@ -101,7 +102,7 @@ function CheckFinancePage() {
             </section>
           )}
           <section className="grid gap-4 md:grid-cols-3">
-            <SummaryCard label="Total Recebido" value={formatMoneyBR(paidTotal)} hint={`${paidInvoices.length} fatura(s) paga(s)`} variant="success" />
+            <SummaryCard label="Total Recebido" value={formatMoneyBR(totalReceived)} hint={`${paidInvoices.length} fatura(s) paga(s) listada(s)`} />
             <SummaryCard label="A receber" value={formatMoneyBR(openTotal)} hint={`${openInvoices.length} fatura(s) em aberto`} variant="success" />
             <SummaryCard label="Vencido / em atraso" value={formatMoneyBR(overdueTotal)} hint={`${overdueInvoices.length} fatura(s) vencida(s)`} variant="danger" />
           </section>

@@ -621,11 +621,15 @@ export const checkFinanceOverviewFn = createServerFn({ method: "GET" }).handler(
     return { canViewFinance, invoices: [] };
   }
 
-  const invoices = await fallback(whmcsGetInvoices(undefined, undefined, 250), [], "GetInvoices finance");
+  const [invoices, stats] = await Promise.all([
+    fallback(whmcsGetInvoices(undefined, undefined, 250), [], "GetInvoices finance"),
+    fallback(whmcsGetStats(), {}, "GetStats finance"),
+  ]);
 
   return {
     canViewFinance,
     invoices: invoices.map(invoiceSummary),
+    totalReceived: statMoney(stats, ["income_alltime", "income_all_time", "alltimeincome", "all_time_income", "total_income"]),
   };
 });
 
