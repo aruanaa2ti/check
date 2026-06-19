@@ -9,7 +9,7 @@ import { meFn, resetPasswordFn } from "@/lib/portal.functions";
 export const Route = createFileRoute("/esqueci-senha")({
   head: () => ({
     meta: [
-      { title: "Recuperar Senha — A2 Soluções em T.I." },
+      { title: "Cliente | a2 Soluções em T.I." },
       { name: "description", content: "Solicite o envio do e-mail de redefinição de senha da Área do Cliente A2." },
       { name: "robots", content: "noindex, nofollow" },
     ],

@@ -13,7 +13,7 @@ import { checkLoginFn, checkMeFn } from "@/lib/check.functions";
 export const Route = createFileRoute("/check/login")({
   head: () => ({
     meta: [
-      { title: "Check Interno — A2 Soluções em T.I." },
+      { title: "Check | a2 Soluções em T.I." },
       {
         name: "description",
         content: "Acesso interno para colaboradores da A2 Soluções em T.I.",

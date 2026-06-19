@@ -12,7 +12,7 @@ const opts = queryOptions({
 export const Route = createFileRoute("/download")({
   head: () => ({
     meta: [
-      { title: "Download — Ferramentas a2" },
+      { title: "a2 Soluções em T.I." },
       {
         name: "description",
         content:

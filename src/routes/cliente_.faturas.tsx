@@ -13,6 +13,12 @@ const opts = queryOptions({ queryKey: ["invoices"], queryFn: () => getInvoicesFn
 const meOpts = queryOptions({ queryKey: ["me"], queryFn: () => meFn() });
 
 export const Route = createFileRoute("/cliente_/faturas")({
+  head: () => ({
+    meta: [
+      { title: "Cliente | a2 Soluções em T.I." },
+      { name: "robots", content: "noindex, nofollow" },
+    ],
+  }),
   loader: async ({ context }) => {
     const me = await context.queryClient.ensureQueryData(meOpts);
     if (!me) throw redirect({ to: "/cliente" });

@@ -6,7 +6,7 @@ import { ToolCard, ToolPageShell } from "@/components/tool-page-shell";
 export const Route = createFileRoute("/senha")({
   head: () => ({
     meta: [
-      { title: "Gerador de Senha — Ferramentas a2" },
+      { title: "a2 Soluções em T.I." },
       {
         name: "description",
         content:

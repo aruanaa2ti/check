@@ -14,8 +14,7 @@ import appCss from "../styles.css?url";
 
 const siteUrl = "https://a2ti.com.br";
 const siteName = "a2 Soluções em T.I.";
-const siteTitle =
-  "a2 Soluções em T.I. | A2 TI, Hospedagem, Segurança e Suporte";
+const siteTitle = "a2 Soluções em T.I.";
 const siteDescription =
   "A2 TI, A2 Soluções em T.I. e Aruan: consultoria em TI, suporte, segurança, monitoramento, hospedagem de sites e e-mails, VPS e backup em São José do Rio Preto.";
 const logoUrl = `${siteUrl}/a2-logo.png`;

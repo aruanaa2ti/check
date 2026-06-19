@@ -9,6 +9,12 @@ import { Server, Globe, Receipt, AlertCircle, ArrowUpRight, MessageSquare } from
 const opts = queryOptions({ queryKey: ["dashboard"], queryFn: () => getDashboardFn() });
 
 export const Route = createFileRoute("/cliente_/dashboard")({
+  head: () => ({
+    meta: [
+      { title: "Cliente | a2 Soluções em T.I." },
+      { name: "robots", content: "noindex, nofollow" },
+    ],
+  }),
   loader: async ({ context }) => {
     const me = await meFn();
     if (!me) throw redirect({ to: "/cliente" });

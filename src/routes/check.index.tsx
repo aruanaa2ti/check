@@ -28,7 +28,7 @@ const opts = {
 export const Route = createFileRoute("/check/")({
   head: () => ({
     meta: [
-      { title: "Check Interno — A2 Soluções em T.I." },
+      { title: "Check | a2 Soluções em T.I." },
       { name: "description", content: "Dashboard interno para consulta de clientes, serviços e chamados." },
     ],
   }),

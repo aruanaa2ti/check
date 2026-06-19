@@ -11,6 +11,12 @@ import { ArrowLeft, ExternalLink, Loader2 } from "lucide-react";
 const meOpts = queryOptions({ queryKey: ["me"], queryFn: () => meFn() });
 
 export const Route = createFileRoute("/cliente_/faturas/$id")({
+  head: () => ({
+    meta: [
+      { title: "Cliente | a2 Soluções em T.I." },
+      { name: "robots", content: "noindex, nofollow" },
+    ],
+  }),
   loader: async ({ context, params }) => {
     const id = Number(params.id);
     const opts = queryOptions({

@@ -21,7 +21,7 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       {
-        title: "a2 Soluções em T.I. | A2 TI, Hospedagem, Segurança e Suporte",
+        title: "a2 Soluções em T.I.",
       },
       {
         name: "description",
@@ -30,7 +30,7 @@ export const Route = createFileRoute("/")({
       },
       {
         property: "og:title",
-        content: "a2 Soluções em T.I. | A2 TI, Hospedagem, Segurança e Suporte",
+        content: "a2 Soluções em T.I.",
       },
       {
         property: "og:description",

@@ -35,6 +35,12 @@ type TicketDetail = TicketRow & {
 };
 
 export const Route = createFileRoute("/cliente_/chamados")({
+  head: () => ({
+    meta: [
+      { title: "Cliente | a2 Soluções em T.I." },
+      { name: "robots", content: "noindex, nofollow" },
+    ],
+  }),
   loader: async ({ context }) => {
     const me = await context.queryClient.ensureQueryData(meOpts);
     if (!me) throw redirect({ to: "/cliente" });

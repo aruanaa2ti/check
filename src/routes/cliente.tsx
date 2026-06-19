@@ -13,7 +13,7 @@ import { Loader2, Mail, Lock, ArrowRight } from "lucide-react";
 export const Route = createFileRoute("/cliente")({
   head: () => ({
     meta: [
-      { title: "Área do Cliente — A2 Soluções em T.I." },
+      { title: "Cliente | a2 Soluções em T.I." },
       {
         name: "description",
         content:

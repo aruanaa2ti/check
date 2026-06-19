@@ -8,7 +8,7 @@ import { ToolCard, ToolPageShell } from "@/components/tool-page-shell";
 export const Route = createFileRoute("/meuip")({
   head: () => ({
     meta: [
-      { title: "Meu IP — Ferramentas a2" },
+      { title: "a2 Soluções em T.I." },
       {
         name: "description",
         content:

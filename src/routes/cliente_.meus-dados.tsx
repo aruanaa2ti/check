@@ -8,6 +8,12 @@ const opts = queryOptions({ queryKey: ["client-details"], queryFn: () => getClie
 const meOpts = queryOptions({ queryKey: ["me"], queryFn: () => meFn() });
 
 export const Route = createFileRoute("/cliente_/meus-dados")({
+  head: () => ({
+    meta: [
+      { title: "Cliente | a2 Soluções em T.I." },
+      { name: "robots", content: "noindex, nofollow" },
+    ],
+  }),
   loader: async ({ context }) => {
     const me = await context.queryClient.ensureQueryData(meOpts);
     if (!me) throw redirect({ to: "/cliente" });

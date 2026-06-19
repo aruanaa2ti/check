@@ -10,6 +10,12 @@ const opts = queryOptions({ queryKey: ["services"], queryFn: () => getServicesFn
 const meOpts = queryOptions({ queryKey: ["me"], queryFn: () => meFn() });
 
 export const Route = createFileRoute("/cliente_/servicos")({
+  head: () => ({
+    meta: [
+      { title: "Cliente | a2 Soluções em T.I." },
+      { name: "robots", content: "noindex, nofollow" },
+    ],
+  }),
   loader: async ({ context }) => {
     const me = await context.queryClient.ensureQueryData(meOpts);
     if (!me) throw redirect({ to: "/cliente" });

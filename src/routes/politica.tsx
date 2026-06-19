@@ -5,7 +5,7 @@ import { SiteHeader, SiteFooter } from "@/components/site-chrome";
 export const Route = createFileRoute("/politica")({
   head: () => ({
     meta: [
-      { title: "Política de Privacidade — A2 Soluções em T.I." },
+      { title: "a2 Soluções em T.I." },
       { name: "description", content: "Política de Privacidade da A2 Soluções em T.I. sobre cookies, dados de contato, ferramentas e área do cliente." },
     ],
   }),
