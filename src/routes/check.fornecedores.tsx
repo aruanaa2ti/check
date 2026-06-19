@@ -18,8 +18,17 @@ export const Route = createFileRoute("/check/fornecedores")({
   loader: async ({ context }) => {
     const me = await checkMeFn();
     if (!me) throw redirect({ to: "/check/login" });
-    const data = await context.queryClient.ensureQueryData(opts);
-    return { me, ...data };
+    try {
+      const data = await context.queryClient.ensureQueryData(opts);
+      return { me, ...data, suppliersLoadError: "" };
+    } catch (error) {
+      return {
+        me,
+        suppliers: [],
+        categories: [],
+        suppliersLoadError: error instanceof Error ? error.message : "Nao foi possivel carregar os fornecedores.",
+      };
+    }
   },
   component: CheckSuppliersPage,
 });
@@ -81,6 +90,11 @@ function CheckSuppliersPage() {
   return (
     <CheckLayout title="Fornecedores" subtitle="Cadastro interno de fornecedores." userName={initial.me.name}>
       <div className="space-y-6">
+        {initial.suppliersLoadError && (
+          <section className="card-soft border-red-200 bg-red-50 p-5 text-sm text-red-700">
+            {initial.suppliersLoadError}
+          </section>
+        )}
         <section className="card-soft overflow-hidden">
           <Header icon={<Building2 className="h-4 w-4" />} title="Novo fornecedor" />
           {(notice || error) && (
