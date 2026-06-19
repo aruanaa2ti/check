@@ -1,7 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowDownCircle, ArrowUpCircle, BarChart3, Loader2, TrendingUp } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ArrowDownCircle, ArrowDownRight, ArrowUpCircle, ArrowUpRight, BarChart3, Loader2, TrendingUp } from "lucide-react";
+import { useMemo, useState, type ReactNode } from "react";
 import { CheckLayout } from "@/components/check/CheckLayout";
 import { checkFinancialResultFn, checkMeFn } from "@/lib/check.functions";
 import { formatMoneyBR } from "@/lib/format";
@@ -42,6 +42,7 @@ function CheckResultPage() {
     const expenses = result.months.reduce((total, item) => total + Number(item.expenses || 0), 0);
     return { income, expenses, result: income - expenses };
   }, [result.months]);
+  const newestMonths = useMemo(() => [...result.months].reverse(), [result.months]);
 
   const changeRange = async (value: number) => {
     setMonthsRange(value);
@@ -73,7 +74,12 @@ function CheckResultPage() {
           <section className="grid gap-4 md:grid-cols-3">
             <SummaryCard label="Entradas" value={formatMoneyBR(totals.income)} icon={<ArrowUpCircle className="h-5 w-5" />} variant="success" />
             <SummaryCard label="Saídas" value={formatMoneyBR(totals.expenses)} icon={<ArrowDownCircle className="h-5 w-5" />} variant="danger" />
-            <SummaryCard label="Resultado" value={formatMoneyBR(totals.result)} icon={<TrendingUp className="h-5 w-5" />} variant={totals.result < 0 ? "danger" : "success"} />
+            <SummaryCard
+              label="Resultado"
+              value={formatMoneyBR(totals.result)}
+              icon={<TrendingUp className="h-5 w-5" />}
+              percentage={resultPercentage(totals.income, totals.expenses)}
+            />
           </section>
 
           <section className="card-soft overflow-hidden">
@@ -115,18 +121,22 @@ function CheckResultPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {result.months.map((month) => (
+                    {newestMonths.map((month) => (
                       <tr key={month.key} className="hover:bg-muted/40">
                         <td className="px-5 py-4 font-medium capitalize">{month.label}</td>
                         <td className="px-5 py-4 font-semibold text-emerald-700">{formatMoneyBR(month.income)}</td>
                         <td className="px-5 py-4 font-semibold text-red-700">{formatMoneyBR(month.expenses)}</td>
-                        <td className={`px-5 py-4 font-bold ${month.result < 0 ? "text-red-700" : "text-emerald-700"}`}>
-                          {formatMoneyBR(month.result)}
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-foreground">{formatMoneyBR(month.result)}</span>
+                            <PercentBadge value={resultPercentage(month.income, month.expenses)} />
+                          </div>
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+                <ResultBarChart months={result.months} />
               </div>
             )}
           </section>
@@ -141,11 +151,13 @@ function SummaryCard({
   value,
   icon,
   variant = "default",
+  percentage,
 }: {
   label: string;
   value: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
   variant?: "default" | "success" | "danger";
+  percentage?: number;
 }) {
   const iconClass = variant === "success" ? "bg-emerald-100 text-emerald-700" : variant === "danger" ? "bg-red-100 text-red-700" : "bg-secondary text-foreground";
   const valueClass = variant === "success" ? "text-emerald-700" : variant === "danger" ? "text-red-700" : "text-foreground";
@@ -153,9 +165,73 @@ function SummaryCard({
     <div className="card-soft flex items-center justify-between p-5">
       <div>
         <p className="text-sm text-muted-foreground">{label}</p>
-        <p className={`mt-2 whitespace-nowrap text-2xl font-bold ${valueClass}`}>{value}</p>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <p className={`whitespace-nowrap text-2xl font-bold ${valueClass}`}>{value}</p>
+          {percentage !== undefined && <PercentBadge value={percentage} />}
+        </div>
       </div>
       <div className={`rounded-md p-3 ${iconClass}`}>{icon}</div>
     </div>
   );
+}
+
+function PercentBadge({ value }: { value: number }) {
+  const positive = value >= 0;
+  const Icon = positive ? ArrowUpRight : ArrowDownRight;
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-bold ${positive ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>
+      <Icon className="h-3.5 w-3.5" />
+      {formatPercent(value)}
+    </span>
+  );
+}
+
+function ResultBarChart({
+  months,
+}: {
+  months: Array<{ key: string; label: string; income: number; expenses: number }>;
+}) {
+  const max = Math.max(...months.flatMap((month) => [Number(month.income || 0), Number(month.expenses || 0)]), 1);
+  return (
+    <div className="border-t border-border p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h3 className="text-sm font-bold">Entradas x Saídas</h3>
+        <div className="flex items-center gap-4 text-xs font-medium text-muted-foreground">
+          <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded-sm bg-blue-600" /> Entradas</span>
+          <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded-sm bg-amber-300" /> Saídas</span>
+        </div>
+      </div>
+      <div className="h-72 overflow-x-auto">
+        <div className="flex min-w-[640px] items-end gap-6 border-b border-foreground/80 bg-[repeating-linear-gradient(to_top,transparent_0,transparent_47px,hsl(var(--border))_48px)] px-4 pt-4">
+          {months.map((month) => (
+            <div key={month.key} className="flex min-w-24 flex-1 flex-col items-center gap-3">
+              <div className="flex h-56 items-end gap-2">
+                <div
+                  title={`Entradas: ${formatMoneyBR(month.income)}`}
+                  className="w-8 rounded-t-sm bg-blue-600"
+                  style={{ height: `${Math.max((Number(month.income || 0) / max) * 100, month.income > 0 ? 3 : 0)}%` }}
+                />
+                <div
+                  title={`Saídas: ${formatMoneyBR(month.expenses)}`}
+                  className="w-8 rounded-t-sm bg-amber-300"
+                  style={{ height: `${Math.max((Number(month.expenses || 0) / max) * 100, month.expenses > 0 ? 3 : 0)}%` }}
+                />
+              </div>
+              <div className="pb-3 text-center text-xs font-semibold capitalize text-foreground">{month.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function resultPercentage(income: number, expenses: number) {
+  if (income > 0) return ((income - expenses) / income) * 100;
+  if (expenses > 0) return -100;
+  return 0;
+}
+
+function formatPercent(value: number) {
+  return `${value.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
 }
