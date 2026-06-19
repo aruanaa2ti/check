@@ -31,8 +31,8 @@ import { Route as ClienteChamadosRouteImport } from './routes/cliente_.chamados'
 import { Route as CheckServicosRouteImport } from './routes/check.servicos'
 import { Route as CheckLoginRouteImport } from './routes/check.login'
 import { Route as CheckFornecedoresRouteImport } from './routes/check.fornecedores'
-import { Route as CheckFinanceiroRouteImport } from './routes/check.financeiro'
 import { Route as CheckDominiosRouteImport } from './routes/check.dominios'
+import { Route as CheckContasAReceberRouteImport } from './routes/check.contas-a-receber'
 import { Route as CheckContasAPagarRouteImport } from './routes/check.contas-a-pagar'
 import { Route as CheckClientesRouteImport } from './routes/check.clientes'
 import { Route as CheckChamadosRouteImport } from './routes/check.chamados'
@@ -154,14 +154,14 @@ const CheckFornecedoresRoute = CheckFornecedoresRouteImport.update({
   path: '/fornecedores',
   getParentRoute: () => CheckRoute,
 } as any)
-const CheckFinanceiroRoute = CheckFinanceiroRouteImport.update({
-  id: '/financeiro',
-  path: '/financeiro',
-  getParentRoute: () => CheckRoute,
-} as any)
 const CheckDominiosRoute = CheckDominiosRouteImport.update({
   id: '/dominios',
   path: '/dominios',
+  getParentRoute: () => CheckRoute,
+} as any)
+const CheckContasAReceberRoute = CheckContasAReceberRouteImport.update({
+  id: '/contas-a-receber',
+  path: '/contas-a-receber',
   getParentRoute: () => CheckRoute,
 } as any)
 const CheckContasAPagarRoute = CheckContasAPagarRouteImport.update({
@@ -241,8 +241,8 @@ export interface FileRoutesByFullPath {
   '/check/chamados': typeof CheckChamadosRoute
   '/check/clientes': typeof CheckClientesRoute
   '/check/contas-a-pagar': typeof CheckContasAPagarRoute
+  '/check/contas-a-receber': typeof CheckContasAReceberRoute
   '/check/dominios': typeof CheckDominiosRoute
-  '/check/financeiro': typeof CheckFinanceiroRoute
   '/check/fornecedores': typeof CheckFornecedoresRoute
   '/check/login': typeof CheckLoginRoute
   '/check/servicos': typeof CheckServicosRoute
@@ -276,8 +276,8 @@ export interface FileRoutesByTo {
   '/check/chamados': typeof CheckChamadosRoute
   '/check/clientes': typeof CheckClientesRoute
   '/check/contas-a-pagar': typeof CheckContasAPagarRoute
+  '/check/contas-a-receber': typeof CheckContasAReceberRoute
   '/check/dominios': typeof CheckDominiosRoute
-  '/check/financeiro': typeof CheckFinanceiroRoute
   '/check/fornecedores': typeof CheckFornecedoresRoute
   '/check/login': typeof CheckLoginRoute
   '/check/servicos': typeof CheckServicosRoute
@@ -314,8 +314,8 @@ export interface FileRoutesById {
   '/check/chamados': typeof CheckChamadosRoute
   '/check/clientes': typeof CheckClientesRoute
   '/check/contas-a-pagar': typeof CheckContasAPagarRoute
+  '/check/contas-a-receber': typeof CheckContasAReceberRoute
   '/check/dominios': typeof CheckDominiosRoute
-  '/check/financeiro': typeof CheckFinanceiroRoute
   '/check/fornecedores': typeof CheckFornecedoresRoute
   '/check/login': typeof CheckLoginRoute
   '/check/servicos': typeof CheckServicosRoute
@@ -352,8 +352,8 @@ export interface FileRouteTypes {
     | '/check/chamados'
     | '/check/clientes'
     | '/check/contas-a-pagar'
+    | '/check/contas-a-receber'
     | '/check/dominios'
-    | '/check/financeiro'
     | '/check/fornecedores'
     | '/check/login'
     | '/check/servicos'
@@ -387,8 +387,8 @@ export interface FileRouteTypes {
     | '/check/chamados'
     | '/check/clientes'
     | '/check/contas-a-pagar'
+    | '/check/contas-a-receber'
     | '/check/dominios'
-    | '/check/financeiro'
     | '/check/fornecedores'
     | '/check/login'
     | '/check/servicos'
@@ -424,8 +424,8 @@ export interface FileRouteTypes {
     | '/check/chamados'
     | '/check/clientes'
     | '/check/contas-a-pagar'
+    | '/check/contas-a-receber'
     | '/check/dominios'
-    | '/check/financeiro'
     | '/check/fornecedores'
     | '/check/login'
     | '/check/servicos'
@@ -617,18 +617,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CheckFornecedoresRouteImport
       parentRoute: typeof CheckRoute
     }
-    '/check/financeiro': {
-      id: '/check/financeiro'
-      path: '/financeiro'
-      fullPath: '/check/financeiro'
-      preLoaderRoute: typeof CheckFinanceiroRouteImport
-      parentRoute: typeof CheckRoute
-    }
     '/check/dominios': {
       id: '/check/dominios'
       path: '/dominios'
       fullPath: '/check/dominios'
       preLoaderRoute: typeof CheckDominiosRouteImport
+      parentRoute: typeof CheckRoute
+    }
+    '/check/contas-a-receber': {
+      id: '/check/contas-a-receber'
+      path: '/contas-a-receber'
+      fullPath: '/check/contas-a-receber'
+      preLoaderRoute: typeof CheckContasAReceberRouteImport
       parentRoute: typeof CheckRoute
     }
     '/check/contas-a-pagar': {
@@ -748,8 +748,8 @@ interface CheckRouteChildren {
   CheckChamadosRoute: typeof CheckChamadosRoute
   CheckClientesRoute: typeof CheckClientesRoute
   CheckContasAPagarRoute: typeof CheckContasAPagarRoute
+  CheckContasAReceberRoute: typeof CheckContasAReceberRoute
   CheckDominiosRoute: typeof CheckDominiosRoute
-  CheckFinanceiroRoute: typeof CheckFinanceiroRoute
   CheckFornecedoresRoute: typeof CheckFornecedoresRoute
   CheckLoginRoute: typeof CheckLoginRoute
   CheckServicosRoute: typeof CheckServicosRoute
@@ -760,8 +760,8 @@ const CheckRouteChildren: CheckRouteChildren = {
   CheckChamadosRoute: CheckChamadosRoute,
   CheckClientesRoute: CheckClientesRoute,
   CheckContasAPagarRoute: CheckContasAPagarRoute,
+  CheckContasAReceberRoute: CheckContasAReceberRoute,
   CheckDominiosRoute: CheckDominiosRoute,
-  CheckFinanceiroRoute: CheckFinanceiroRoute,
   CheckFornecedoresRoute: CheckFornecedoresRoute,
   CheckLoginRoute: CheckLoginRoute,
   CheckServicosRoute: CheckServicosRoute,

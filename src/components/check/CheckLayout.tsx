@@ -28,7 +28,7 @@ const NAV = [
     label: "Financeiro",
     icon: Receipt,
     children: [
-      { to: "/check/financeiro", label: "Contas a Receber", icon: Receipt },
+      { to: "/check/contas-a-receber", label: "Contas a Receber", icon: Receipt },
       { to: "/check/contas-a-pagar", label: "Contas a Pagar", icon: WalletCards },
     ],
   },

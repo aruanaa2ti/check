@@ -11,7 +11,7 @@ const opts = {
   queryFn: () => checkFinanceOverviewFn(),
 };
 
-export const Route = createFileRoute("/check/financeiro")({
+export const Route = createFileRoute("/check/contas-a-receber")({
   loader: async ({ context }) => {
     const me = await checkMeFn();
     if (!me) throw redirect({ to: "/check/login" });
