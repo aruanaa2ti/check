@@ -1,7 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Building2, Loader2, Plus } from "lucide-react";
-import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { Building2, Loader2, Plus, X } from "lucide-react";
+import { useMemo, useState, type FormEvent } from "react";
 import { CheckLayout } from "@/components/check/CheckLayout";
 import { checkMeFn } from "@/lib/check.functions";
 import { createSupplierFn, listSupplierCategoriesFn, listSuppliersFn } from "@/lib/payables.functions";
@@ -39,6 +39,7 @@ function CheckSuppliersPage() {
   const [suppliers, setSuppliers] = useState(initial.suppliers);
   const [term, setTerm] = useState("");
   const [saving, setSaving] = useState(false);
+  const [newSupplierOpen, setNewSupplierOpen] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
 
@@ -79,6 +80,7 @@ function CheckSuppliersPage() {
       });
       setSuppliers(await listSuppliersFn());
       event.currentTarget.reset();
+      setNewSupplierOpen(false);
       setNotice("Fornecedor cadastrado com sucesso.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Nao foi possivel salvar o fornecedor.");
@@ -96,46 +98,29 @@ function CheckSuppliersPage() {
           </section>
         )}
         <section className="card-soft overflow-hidden">
-          <Header icon={<Building2 className="h-4 w-4" />} title="Novo fornecedor" />
+          <div className="flex flex-col gap-3 border-b border-border bg-muted/30 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2">
+              <Building2 className="h-4 w-4" />
+              <h2 className="text-base font-bold">Fornecedores</h2>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setError("");
+                setNotice("");
+                setNewSupplierOpen(true);
+              }}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-brand-dark"
+            >
+              <Plus className="h-4 w-4" />
+              Novo Fornecedor
+            </button>
+          </div>
           {(notice || error) && (
             <div className={`border-b px-5 py-3 text-sm ${error ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`}>
               {error || notice}
             </div>
           )}
-          <form onSubmit={onSubmit} className="grid gap-4 p-5 md:grid-cols-2 xl:grid-cols-4">
-            <Field label="Nome/Razão social" name="name" required />
-            <Field label="CPF/CNPJ" name="document" />
-            <Field label="E-mail" name="email" type="email" />
-            <Field label="Telefone" name="phone" />
-            <Field label="WhatsApp" name="whatsapp" />
-            <Field label="Chave Pix" name="pixKey" />
-            <label className="text-sm">
-              <span className="mb-1 block font-medium">Categoria</span>
-              <select name="categoryId" className="h-10 w-full rounded-md border border-input bg-background px-3 outline-none focus:border-brand">
-                <option value="">Sem categoria</option>
-                {initial.categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <Field label="Observações" name="notes" />
-            <div className="md:col-span-2 xl:col-span-4">
-              <button
-                type="submit"
-                disabled={saving}
-                className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-brand-dark disabled:opacity-60"
-              >
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                Cadastrar fornecedor
-              </button>
-            </div>
-          </form>
-        </section>
-
-        <section className="card-soft overflow-hidden">
-          <Header icon={<Building2 className="h-4 w-4" />} title="Fornecedores" />
           <div className="border-b border-border p-4">
             <input
               value={term}
@@ -176,16 +161,73 @@ function CheckSuppliersPage() {
           )}
         </section>
       </div>
-    </CheckLayout>
-  );
-}
 
-function Header({ icon, title }: { icon: ReactNode; title: string }) {
-  return (
-    <div className="flex items-center gap-2 border-b border-border bg-muted/30 px-5 py-4">
-      {icon}
-      <h2 className="text-base font-bold">{title}</h2>
-    </div>
+      {newSupplierOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-lg border border-border bg-card shadow-soft">
+            <div className="flex items-center justify-between border-b border-border px-5 py-4">
+              <div className="flex items-center gap-2">
+                <Building2 className="h-4 w-4" />
+                <h2 className="text-base font-bold">Novo Fornecedor</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!saving) setNewSupplierOpen(false);
+                }}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+                aria-label="Fechar"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            {error && (
+              <div className="border-b border-red-200 bg-red-50 px-5 py-3 text-sm text-red-700">
+                {error}
+              </div>
+            )}
+            <form onSubmit={onSubmit} className="grid gap-4 p-5 md:grid-cols-2">
+              <Field label="Nome/Razão social" name="name" required />
+              <Field label="CPF/CNPJ" name="document" />
+              <Field label="E-mail" name="email" type="email" />
+              <Field label="Telefone" name="phone" />
+              <Field label="WhatsApp" name="whatsapp" />
+              <Field label="Chave Pix" name="pixKey" />
+              <label className="text-sm">
+                <span className="mb-1 block font-medium">Categoria</span>
+                <select name="categoryId" className="h-10 w-full rounded-md border border-input bg-background px-3 outline-none focus:border-brand">
+                  <option value="">Sem categoria</option>
+                  {initial.categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <Field label="Observações" name="notes" />
+              <div className="flex justify-end gap-2 border-t border-border pt-4 md:col-span-2">
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => setNewSupplierOpen(false)}
+                  className="inline-flex h-10 items-center rounded-md border border-border px-4 text-sm font-semibold transition hover:bg-secondary disabled:opacity-60"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-brand-dark disabled:opacity-60"
+                >
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                  Cadastrar fornecedor
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </CheckLayout>
   );
 }
 
