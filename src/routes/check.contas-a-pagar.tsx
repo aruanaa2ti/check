@@ -426,6 +426,26 @@ function DateRangeField({
 }) {
   const [open, setOpen] = useState(false);
   const label = from || to ? `${from ? formatDateBR(from) : "Inicio"} - ${to ? formatDateBR(to) : "Fim"}` : "Intervalo de vencimento";
+  const applyRange = (range: "today" | "week" | "month") => {
+    const today = new Date();
+    const start = new Date(today);
+    const end = new Date(today);
+
+    if (range === "week") {
+      const weekday = today.getDay();
+      const mondayOffset = weekday === 0 ? -6 : 1 - weekday;
+      start.setDate(today.getDate() + mondayOffset);
+      end.setDate(start.getDate() + 6);
+    }
+
+    if (range === "month") {
+      start.setDate(1);
+      end.setMonth(today.getMonth() + 1, 0);
+    }
+
+    onFrom(formatInputDate(start));
+    onTo(formatInputDate(end));
+  };
 
   return (
     <div className="relative">
@@ -440,6 +460,29 @@ function DateRangeField({
       {open && (
         <div className="absolute left-0 top-12 z-20 w-full min-w-72 rounded-md border border-border bg-card p-3 shadow-soft">
           <div className="grid gap-3">
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => applyRange("today")}
+                className="h-9 rounded-md border border-border px-2 text-xs font-semibold transition hover:bg-secondary"
+              >
+                Hoje
+              </button>
+              <button
+                type="button"
+                onClick={() => applyRange("week")}
+                className="h-9 rounded-md border border-border px-2 text-xs font-semibold transition hover:bg-secondary"
+              >
+                Esta Semana
+              </button>
+              <button
+                type="button"
+                onClick={() => applyRange("month")}
+                className="h-9 rounded-md border border-border px-2 text-xs font-semibold transition hover:bg-secondary"
+              >
+                Este Mês
+              </button>
+            </div>
             <label className="text-xs font-medium text-muted-foreground">
               Data inicial
               <input
@@ -482,4 +525,11 @@ function DateRangeField({
       )}
     </div>
   );
+}
+
+function formatInputDate(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
