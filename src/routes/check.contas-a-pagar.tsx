@@ -1,6 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Calendar, CheckCircle, Loader2, Plus, RotateCcw, WalletCards, X, XCircle } from "lucide-react";
+import { Calendar, CheckCircle, Loader2, Pencil, Plus, RotateCcw, WalletCards, X, XCircle } from "lucide-react";
 import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { CheckLayout } from "@/components/check/CheckLayout";
 import { checkMeFn } from "@/lib/check.functions";
@@ -11,6 +11,8 @@ import {
   listPaymentMethodsFn,
   listSupplierCategoriesFn,
   listSuppliersFn,
+  settlePayableFn,
+  updatePayableFn,
   updatePayableStatusFn,
 } from "@/lib/payables.functions";
 import { formatDateBR, formatMoneyBR } from "@/lib/format";
@@ -66,6 +68,8 @@ function CheckPayablesPage() {
   const initial = Route.useLoaderData();
   const createPayable = useServerFn(createPayableFn);
   const createPaymentMethod = useServerFn(createPaymentMethodFn);
+  const updatePayable = useServerFn(updatePayableFn);
+  const settlePayable = useServerFn(settlePayableFn);
   const updateStatus = useServerFn(updatePayableStatusFn);
   const [payables, setPayables] = useState(initial.payables);
   const [paymentMethods, setPaymentMethods] = useState(initial.paymentMethods);
@@ -76,10 +80,16 @@ function CheckPayablesPage() {
   const [saving, setSaving] = useState(false);
   const [actionId, setActionId] = useState<number | null>(null);
   const [newAccountOpen, setNewAccountOpen] = useState(false);
+  const [editingPayable, setEditingPayable] = useState<(typeof initial.payables)[number] | null>(null);
+  const [settlingPayable, setSettlingPayable] = useState<(typeof initial.payables)[number] | null>(null);
   const [newPaymentMethodOpen, setNewPaymentMethodOpen] = useState(false);
   const [newPaymentMethodName, setNewPaymentMethodName] = useState("");
   const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState("");
   const [savingPaymentMethod, setSavingPaymentMethod] = useState(false);
+  const [settlePaidAt, setSettlePaidAt] = useState(formatInputDate(new Date()));
+  const [settleInterest, setSettleInterest] = useState("R$ 0,00");
+  const [settleDiscount, setSettleDiscount] = useState("R$ 0,00");
+  const [settlePaymentMethodId, setSettlePaymentMethodId] = useState("");
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
 
@@ -121,29 +131,91 @@ function CheckPayablesPage() {
     setError("");
     const formEl = event.currentTarget;
     const form = new FormData(formEl);
+    const payload = {
+      supplierId: Number(form.get("supplierId") || 0) || undefined,
+      categoryId: Number(form.get("categoryId") || 0) || undefined,
+      description: String(form.get("description") || ""),
+      amount: parseMoneyBR(String(form.get("amount") || "0")),
+      dueDate: String(form.get("dueDate") || ""),
+      competency: String(form.get("competency") || ""),
+      recurrence: String(form.get("recurrence") || "none") as "none" | "monthly" | "yearly",
+      paymentMethodId: Number(form.get("paymentMethodId") || 0) || undefined,
+      notes: String(form.get("notes") || ""),
+    };
     try {
-      await createPayable({
-        data: {
-          supplierId: Number(form.get("supplierId") || 0) || undefined,
-          categoryId: Number(form.get("categoryId") || 0) || undefined,
-          description: String(form.get("description") || ""),
-          amount: parseMoneyBR(String(form.get("amount") || "0")),
-          dueDate: String(form.get("dueDate") || ""),
-          competency: String(form.get("competency") || ""),
-          recurrence: String(form.get("recurrence") || "none") as "none" | "monthly" | "yearly",
-          paymentMethodId: Number(form.get("paymentMethodId") || 0) || undefined,
-          notes: String(form.get("notes") || ""),
-        },
-      });
+      if (editingPayable) {
+        await updatePayable({ data: { id: editingPayable.id, ...payload } });
+      } else {
+        await createPayable({ data: payload });
+      }
       await refresh();
       formEl.reset();
       setSelectedPaymentMethodId("");
       setNewPaymentMethodOpen(false);
       setNewPaymentMethodName("");
       setNewAccountOpen(false);
-      setNotice("Conta cadastrada com sucesso.");
+      setEditingPayable(null);
+      setNotice(editingPayable ? "Conta atualizada com sucesso." : "Conta cadastrada com sucesso.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Nao foi possivel salvar a conta.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const openNewAccount = () => {
+    setError("");
+    setNotice("");
+    setEditingPayable(null);
+    setSelectedPaymentMethodId("");
+    setNewPaymentMethodOpen(false);
+    setNewPaymentMethodName("");
+    setNewAccountOpen(true);
+  };
+
+  const openEditAccount = (payable: (typeof initial.payables)[number]) => {
+    setError("");
+    setNotice("");
+    setEditingPayable(payable);
+    setSelectedPaymentMethodId(payable.paymentMethodId ? String(payable.paymentMethodId) : "");
+    setNewPaymentMethodOpen(false);
+    setNewPaymentMethodName("");
+    setNewAccountOpen(true);
+  };
+
+  const openSettlement = (payable: (typeof initial.payables)[number]) => {
+    setError("");
+    setNotice("");
+    setSettlingPayable(payable);
+    setSettlePaidAt(formatInputDate(new Date()));
+    setSettleInterest("R$ 0,00");
+    setSettleDiscount("R$ 0,00");
+    setSettlePaymentMethodId(payable.paymentMethodId ? String(payable.paymentMethodId) : "");
+  };
+
+  const submitSettlement = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!settlingPayable) return;
+    setSaving(true);
+    setNotice("");
+    setError("");
+    const form = new FormData(event.currentTarget);
+    try {
+      const result = await settlePayable({
+        data: {
+          id: settlingPayable.id,
+          paidAt: String(form.get("paidAt") || ""),
+          interestAmount: parseMoneyBR(String(form.get("interestAmount") || "0")),
+          discountAmount: parseMoneyBR(String(form.get("discountAmount") || "0")),
+          paymentMethodId: Number(form.get("paymentMethodId") || 0) || undefined,
+          notes: String(form.get("notes") || ""),
+        },
+      });
+      await refresh();
+      setSettlingPayable(null);
+      setNotice(`Baixa registrada com sucesso. Valor pago: ${formatMoneyBR(result.paidAmount)}.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Nao foi possivel registrar a baixa.");
     } finally {
       setSaving(false);
     }
@@ -205,14 +277,7 @@ function CheckPayablesPage() {
             </div>
             <button
               type="button"
-              onClick={() => {
-                setError("");
-                setNotice("");
-                setSelectedPaymentMethodId("");
-                setNewPaymentMethodOpen(false);
-                setNewPaymentMethodName("");
-                setNewAccountOpen(true);
-              }}
+              onClick={openNewAccount}
               className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-brand-dark"
             >
               <Plus className="h-4 w-4" />
@@ -276,10 +341,13 @@ function CheckPayablesPage() {
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-2">
                           {payable.status !== "paid" && payable.status !== "cancelled" && (
-                            <IconButton title="Marcar como paga" disabled={actionId === payable.id} onClick={() => changeStatus(payable.id, "paid")}>
-                              {actionId === payable.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                            <IconButton title="Registrar baixa" disabled={actionId === payable.id} onClick={() => openSettlement(payable)}>
+                              <CheckCircle className="h-4 w-4" />
                             </IconButton>
                           )}
+                          <IconButton title="Editar conta" disabled={actionId === payable.id || payable.status === "paid"} onClick={() => openEditAccount(payable)}>
+                            <Pencil className="h-4 w-4" />
+                          </IconButton>
                           {payable.status !== "cancelled" && (
                             <IconButton title="Cancelar" disabled={actionId === payable.id} onClick={() => changeStatus(payable.id, "cancelled")}>
                               <XCircle className="h-4 w-4" />
@@ -307,7 +375,7 @@ function CheckPayablesPage() {
             <div className="flex items-center justify-between border-b border-border px-5 py-4">
               <div className="flex items-center gap-2">
                 <WalletCards className="h-4 w-4" />
-                <h2 className="text-base font-bold">Nova Conta</h2>
+                <h2 className="text-base font-bold">{editingPayable ? "Editar Conta" : "Nova Conta"}</h2>
               </div>
               <button
                 type="button"
@@ -325,11 +393,11 @@ function CheckPayablesPage() {
                 {error}
               </div>
             )}
-            <form onSubmit={onSubmit} className="grid gap-4 p-5 md:grid-cols-2">
-              <Field label="Descrição" name="description" required />
+            <form key={editingPayable?.id ?? "new"} onSubmit={onSubmit} className="grid gap-4 p-5 md:grid-cols-2">
+              <Field label="Descrição" name="description" defaultValue={editingPayable?.description ?? ""} required />
               <label className="text-sm">
                 <span className="mb-1 block font-medium">Fornecedor</span>
-                <select name="supplierId" className="h-10 w-full rounded-md border border-input bg-background px-3 outline-none focus:border-brand">
+                <select name="supplierId" defaultValue={editingPayable?.supplierId ?? ""} className="h-10 w-full rounded-md border border-input bg-background px-3 outline-none focus:border-brand">
                   <option value="">Sem fornecedor</option>
                   {initial.suppliers.map((supplier) => (
                     <option key={supplier.id} value={supplier.id}>{supplier.name}</option>
@@ -338,16 +406,16 @@ function CheckPayablesPage() {
               </label>
               <label className="text-sm">
                 <span className="mb-1 block font-medium">Categoria</span>
-                <select name="categoryId" className="h-10 w-full rounded-md border border-input bg-background px-3 outline-none focus:border-brand">
+                <select name="categoryId" defaultValue={editingPayable?.categoryId ?? ""} className="h-10 w-full rounded-md border border-input bg-background px-3 outline-none focus:border-brand">
                   <option value="">Sem categoria</option>
                   {initial.categories.map((category) => (
                     <option key={category.id} value={category.id}>{category.name}</option>
                   ))}
                 </select>
               </label>
-              <Field label="Valor" name="amount" defaultValue="R$ 0,00" mask={formatMoneyInput} required />
-              <Field label="Vencimento" name="dueDate" type="date" required />
-              <Field label="Competência" name="competency" type="date" />
+              <Field label="Valor" name="amount" defaultValue={editingPayable ? formatMoneyInput(String(Math.round(Number(editingPayable.amount) * 100))) : "R$ 0,00"} mask={formatMoneyInput} required />
+              <Field label="Vencimento" name="dueDate" type="date" defaultValue={editingPayable?.dueDate ?? ""} required />
+              <Field label="Competência" name="competency" type="date" defaultValue={editingPayable?.competency ?? ""} />
               <label className="text-sm">
                 <span className="mb-1 block font-medium">Forma de pagamento</span>
                 <div className="flex gap-2">
@@ -400,7 +468,7 @@ function CheckPayablesPage() {
               </label>
               <label className="text-sm">
                 <span className="mb-1 block font-medium">Recorrência</span>
-                <select name="recurrence" className="h-10 w-full rounded-md border border-input bg-background px-3 outline-none focus:border-brand">
+                <select name="recurrence" defaultValue={editingPayable?.recurrence ?? "none"} className="h-10 w-full rounded-md border border-input bg-background px-3 outline-none focus:border-brand">
                   <option value="none">Unica</option>
                   <option value="monthly">Mensal</option>
                   <option value="yearly">Anual</option>
@@ -409,7 +477,7 @@ function CheckPayablesPage() {
               <div className="md:col-span-2">
                 <label className="text-sm">
                   <span className="mb-1 block font-medium">Observações</span>
-                  <input name="notes" className="h-10 w-full rounded-md border border-input bg-background px-3 outline-none focus:border-brand" />
+                  <input name="notes" defaultValue={editingPayable?.notes ?? ""} className="h-10 w-full rounded-md border border-input bg-background px-3 outline-none focus:border-brand" />
                 </label>
               </div>
               <div className="flex justify-end gap-2 border-t border-border pt-4 md:col-span-2">
@@ -426,8 +494,86 @@ function CheckPayablesPage() {
                   disabled={saving}
                   className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-brand-dark disabled:opacity-60"
                 >
-                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                  Cadastrar conta
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingPayable ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                  {editingPayable ? "Salvar conta" : "Cadastrar conta"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {settlingPayable && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg border border-border bg-card shadow-soft">
+            <div className="flex items-center justify-between border-b border-border px-5 py-4">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4" />
+                <h2 className="text-base font-bold">Baixa de Conta</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!saving) setSettlingPayable(null);
+                }}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+                aria-label="Fechar"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            {error && (
+              <div className="border-b border-red-200 bg-red-50 px-5 py-3 text-sm text-red-700">
+                {error}
+              </div>
+            )}
+            <form onSubmit={submitSettlement} className="grid gap-4 p-5 md:grid-cols-2">
+              <div className="rounded-md border border-border bg-muted/30 p-4 md:col-span-2">
+                <p className="text-sm font-semibold">{settlingPayable.description}</p>
+                <p className="mt-1 text-sm text-muted-foreground">Valor original: {formatMoneyBR(settlingPayable.amount)}</p>
+                <p className="mt-1 text-sm font-semibold">
+                  Valor final: {formatMoneyBR(Math.max(Number(settlingPayable.amount) + parseMoneyBR(settleInterest) - parseMoneyBR(settleDiscount), 0))}
+                </p>
+              </div>
+              <Field label="Data do pagamento" name="paidAt" type="date" defaultValue={settlePaidAt} required />
+              <label className="text-sm">
+                <span className="mb-1 block font-medium">Forma de pagamento</span>
+                <select
+                  name="paymentMethodId"
+                  value={settlePaymentMethodId}
+                  onChange={(event) => setSettlePaymentMethodId(event.target.value)}
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 outline-none focus:border-brand"
+                >
+                  <option value="">Selecione</option>
+                  {paymentMethods.map((method) => (
+                    <option key={method.id} value={method.id}>{method.name}</option>
+                  ))}
+                </select>
+              </label>
+              <MoneyField label="Juros" name="interestAmount" value={settleInterest} onChange={setSettleInterest} />
+              <MoneyField label="Desconto" name="discountAmount" value={settleDiscount} onChange={setSettleDiscount} />
+              <div className="md:col-span-2">
+                <label className="text-sm">
+                  <span className="mb-1 block font-medium">Observações da baixa</span>
+                  <input name="notes" className="h-10 w-full rounded-md border border-input bg-background px-3 outline-none focus:border-brand" />
+                </label>
+              </div>
+              <div className="flex justify-end gap-2 border-t border-border pt-4 md:col-span-2">
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => setSettlingPayable(null)}
+                  className="inline-flex h-10 items-center rounded-md border border-border px-4 text-sm font-semibold transition hover:bg-secondary disabled:opacity-60"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-brand-dark disabled:opacity-60"
+                >
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                  Registrar baixa
                 </button>
               </div>
             </form>
@@ -494,6 +640,30 @@ function Field({
           event.currentTarget.value = mask(event.currentTarget.value);
         }}
         required={required}
+        className="h-10 w-full rounded-md border border-input bg-background px-3 outline-none focus:border-brand"
+      />
+    </label>
+  );
+}
+
+function MoneyField({
+  label,
+  name,
+  value,
+  onChange,
+}: {
+  label: string;
+  name: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="text-sm">
+      <span className="mb-1 block font-medium">{label}</span>
+      <input
+        name={name}
+        value={value}
+        onChange={(event) => onChange(formatMoneyInput(event.target.value))}
         className="h-10 w-full rounded-md border border-input bg-background px-3 outline-none focus:border-brand"
       />
     </label>

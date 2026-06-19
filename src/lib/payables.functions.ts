@@ -196,6 +196,7 @@ export const listPayablesFn = createServerFn({ method: "GET" }).handler(async ()
     id: number;
     supplierId: number | null;
     supplierName: string | null;
+    categoryId: number | null;
     categoryName: string | null;
     description: string;
     amount: number;
@@ -206,12 +207,16 @@ export const listPayablesFn = createServerFn({ method: "GET" }).handler(async ()
     paymentMethodId: number | null;
     paymentMethod: string | null;
     paidAt: string | null;
+    paidAmount: number;
+    interestAmount: number;
+    discountAmount: number;
     notes: string | null;
   }>(`
     SELECT
       p.id,
       p.supplier_id AS supplierId,
       s.name AS supplierName,
+      p.category_id AS categoryId,
       c.name AS categoryName,
       p.description,
       p.amount,
@@ -225,11 +230,18 @@ export const listPayablesFn = createServerFn({ method: "GET" }).handler(async ()
       p.payment_method_id AS paymentMethodId,
       COALESCE(pm.name, p.payment_method) AS paymentMethod,
       DATE_FORMAT(p.paid_at, '%Y-%m-%d') AS paidAt,
+      COALESCE(SUM(pp.paid_amount), 0) AS paidAmount,
+      COALESCE(SUM(pp.interest_amount), 0) AS interestAmount,
+      COALESCE(SUM(pp.discount_amount), 0) AS discountAmount,
       p.notes
     FROM a2_payables p
     LEFT JOIN a2_suppliers s ON s.id = p.supplier_id
     LEFT JOIN a2_supplier_categories c ON c.id = p.category_id
     LEFT JOIN a2_payment_methods pm ON pm.id = p.payment_method_id
+    LEFT JOIN a2_payable_payments pp ON pp.payable_id = p.id
+    GROUP BY
+      p.id, p.supplier_id, s.name, p.category_id, c.name, p.description, p.amount, p.due_date, p.competency,
+      p.status, p.recurrence, p.payment_method_id, pm.name, p.payment_method, p.paid_at, p.notes
     ORDER BY p.due_date ASC, p.id DESC
   `);
 });
@@ -275,6 +287,119 @@ export const createPayableFn = createServerFn({ method: "POST" })
     return { ok: true, id: Number(result.insertId ?? 0) };
   });
 
+export const updatePayableFn = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        id: z.number().int().positive(),
+        supplierId: numberFromForm.optional(),
+        categoryId: numberFromForm.optional(),
+        description: z.string().trim().min(2),
+        amount: numberFromForm.refine((value) => value > 0, "Valor deve ser maior que zero."),
+        dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        competency: z.string().optional(),
+        recurrence: z.enum(["none", "monthly", "yearly"]).default("none"),
+        paymentMethodId: numberFromForm.optional(),
+        notes: z.string().trim().optional(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data }) => {
+    await requirePayablesUser();
+    await mysqlExec(
+      `UPDATE a2_payables
+       SET supplier_id = :supplierId,
+           category_id = :categoryId,
+           description = :description,
+           amount = :amount,
+           due_date = :dueDate,
+           competency = :competency,
+           recurrence = :recurrence,
+           payment_method_id = :paymentMethodId,
+           notes = :notes
+       WHERE id = :id`,
+      {
+        id: data.id,
+        supplierId: data.supplierId || null,
+        categoryId: data.categoryId || null,
+        description: data.description,
+        amount: data.amount,
+        dueDate: data.dueDate,
+        competency: data.competency || null,
+        recurrence: data.recurrence,
+        paymentMethodId: data.paymentMethodId || null,
+        notes: data.notes || null,
+      },
+    );
+    return { ok: true };
+  });
+
+export const settlePayableFn = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        id: z.number().int().positive(),
+        paidAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        interestAmount: numberFromForm.default(0),
+        discountAmount: numberFromForm.default(0),
+        paymentMethodId: numberFromForm.optional(),
+        notes: z.string().trim().optional(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data }) => {
+    const user = await requirePayablesUser();
+    const rows = await mysqlQuery<{ amount: number; paymentMethodId: number | null }>(
+      "SELECT amount, payment_method_id AS paymentMethodId FROM a2_payables WHERE id = :id LIMIT 1",
+      { id: data.id },
+    );
+    const payable = rows[0];
+    if (!payable) throw new Error("Conta nao encontrada.");
+
+    const baseAmount = Number(payable.amount || 0);
+    const interestAmount = Number(data.interestAmount || 0);
+    const discountAmount = Number(data.discountAmount || 0);
+    const paidAmount = Math.max(baseAmount + interestAmount - discountAmount, 0);
+    const paymentMethodId = data.paymentMethodId || payable.paymentMethodId || null;
+
+    await mysqlExec(
+      `INSERT INTO a2_payable_payments
+        (payable_id, payment_method_id, paid_at, base_amount, interest_amount, discount_amount, paid_amount, notes, created_by)
+       VALUES
+        (:payableId, :paymentMethodId, :paidAt, :baseAmount, :interestAmount, :discountAmount, :paidAmount, :notes, :createdBy)`,
+      {
+        payableId: data.id,
+        paymentMethodId,
+        paidAt: data.paidAt,
+        baseAmount,
+        interestAmount,
+        discountAmount,
+        paidAmount,
+        notes: data.notes || null,
+        createdBy: user.email,
+      },
+    );
+
+    await mysqlExec(
+      `UPDATE a2_payables
+       SET status = 'paid',
+           paid_at = :paidAt,
+           paid_by = :paidBy,
+           payment_method_id = COALESCE(:paymentMethodId, payment_method_id)
+       WHERE id = :id`,
+      { id: data.id, paidAt: data.paidAt, paidBy: user.email, paymentMethodId },
+    );
+    await mysqlExec(
+      "INSERT INTO a2_payable_activity (payable_id, actor, action, details) VALUES (:id, :actor, 'paid', :details)",
+      {
+        id: data.id,
+        actor: user.email,
+        details: JSON.stringify({ paidAt: data.paidAt, interestAmount, discountAmount, paidAmount }),
+      },
+    );
+    return { ok: true, paidAmount };
+  });
+
 export const updatePayableStatusFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) =>
     z
@@ -286,6 +411,9 @@ export const updatePayableStatusFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const user = await requirePayablesUser();
+    if (data.status === "open") {
+      await mysqlExec("DELETE FROM a2_payable_payments WHERE payable_id = :id", { id: data.id });
+    }
     await mysqlExec(
       `UPDATE a2_payables
        SET status = :status,
