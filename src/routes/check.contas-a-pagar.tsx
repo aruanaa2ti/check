@@ -1,6 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { CheckCircle, Loader2, Plus, RotateCcw, WalletCards, X, XCircle } from "lucide-react";
+import { Calendar, CheckCircle, Loader2, Plus, RotateCcw, WalletCards, X, XCircle } from "lucide-react";
 import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { CheckLayout } from "@/components/check/CheckLayout";
 import { checkMeFn } from "@/lib/check.functions";
@@ -188,27 +188,14 @@ function CheckPayablesPage() {
               {error || notice}
             </div>
           )}
-          <div className="grid gap-3 border-b border-border p-4 lg:grid-cols-[1fr_180px_180px_220px]">
+          <div className="grid gap-3 border-b border-border p-4 lg:grid-cols-[1fr_280px_220px]">
             <input
               value={term}
               onChange={(event) => setTerm(event.target.value)}
               className="h-11 rounded-md border border-input bg-background px-4 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/30"
               placeholder="Filtrar por descrição, fornecedor, categoria ou vencimento"
             />
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(event) => setDateFrom(event.target.value)}
-              className="h-11 rounded-md border border-input bg-background px-3 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/30"
-              aria-label="Data inicial"
-            />
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(event) => setDateTo(event.target.value)}
-              className="h-11 rounded-md border border-input bg-background px-3 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/30"
-              aria-label="Data final"
-            />
+            <DateRangeField from={dateFrom} to={dateTo} onFrom={setDateFrom} onTo={setDateTo} />
             <select
               value={status}
               onChange={(event) => setStatus(event.target.value)}
@@ -424,4 +411,75 @@ function isIsoDateInRange(value: string, from: string, to: string) {
   if (!from && !to) return true;
   if (!value) return false;
   return (!from || value >= from) && (!to || value <= to);
+}
+
+function DateRangeField({
+  from,
+  to,
+  onFrom,
+  onTo,
+}: {
+  from: string;
+  to: string;
+  onFrom: (value: string) => void;
+  onTo: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const label = from || to ? `${from ? formatDateBR(from) : "Inicio"} - ${to ? formatDateBR(to) : "Fim"}` : "Intervalo de vencimento";
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        className="flex h-11 w-full items-center gap-2 rounded-md border border-input bg-background px-3 text-left text-sm outline-none transition hover:bg-secondary focus:border-brand focus:ring-2 focus:ring-brand/30"
+      >
+        <Calendar className="h-4 w-4 text-muted-foreground" />
+        <span className="truncate">{label}</span>
+      </button>
+      {open && (
+        <div className="absolute left-0 top-12 z-20 w-full min-w-72 rounded-md border border-border bg-card p-3 shadow-soft">
+          <div className="grid gap-3">
+            <label className="text-xs font-medium text-muted-foreground">
+              Data inicial
+              <input
+                type="date"
+                value={from}
+                onChange={(event) => onFrom(event.target.value)}
+                className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-brand"
+              />
+            </label>
+            <label className="text-xs font-medium text-muted-foreground">
+              Data final
+              <input
+                type="date"
+                value={to}
+                onChange={(event) => onTo(event.target.value)}
+                className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-brand"
+              />
+            </label>
+            <div className="flex justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  onFrom("");
+                  onTo("");
+                }}
+                className="h-9 rounded-md border border-border px-3 text-xs font-semibold transition hover:bg-secondary"
+              >
+                Limpar
+              </button>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="h-9 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground transition hover:bg-brand-dark"
+              >
+                Aplicar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }

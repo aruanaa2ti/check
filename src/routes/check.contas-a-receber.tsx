@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight, LoaderCircle, MailCheck, Receipt } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, LoaderCircle, MailCheck, Receipt } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import { CheckLayout } from "@/components/check/CheckLayout";
 import { StatusBadge } from "@/components/portal/StatusBadge";
@@ -100,8 +100,8 @@ function CheckFinancePage() {
           )}
           <section className="grid gap-4 md:grid-cols-3">
             <SummaryCard label="Faturas listadas" value={finance.invoices.length} />
-            <SummaryCard label="A receber" value={formatMoneyBR(openTotal)} hint={`${openInvoices.length} fatura(s) em aberto`} />
-            <SummaryCard label="Vencido / em atraso" value={formatMoneyBR(overdueTotal)} hint={`${overdueInvoices.length} fatura(s) vencida(s)`} />
+            <SummaryCard label="A receber" value={formatMoneyBR(openTotal)} hint={`${openInvoices.length} fatura(s) em aberto`} variant="success" />
+            <SummaryCard label="Vencido / em atraso" value={formatMoneyBR(overdueTotal)} hint={`${overdueInvoices.length} fatura(s) vencida(s)`} variant="danger" />
           </section>
 
           <section className="card-soft overflow-hidden">
@@ -112,7 +112,7 @@ function CheckFinancePage() {
               </div>
             )}
             <div className="border-b border-border p-4">
-              <div className="grid gap-3 lg:grid-cols-[1fr_180px_180px_220px]">
+              <div className="grid gap-3 lg:grid-cols-[1fr_280px_220px]">
                 <input
                   value={invoiceTerm}
                   onChange={(event) => {
@@ -122,25 +122,17 @@ function CheckFinancePage() {
                   className="h-11 rounded-md border border-input bg-background px-4 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/30"
                   placeholder="Filtrar por cliente, fatura, status ou data"
                 />
-                <input
-                  type="date"
-                  value={invoiceDateFrom}
-                  onChange={(event) => {
-                    setInvoiceDateFrom(event.target.value);
+                <DateRangeField
+                  from={invoiceDateFrom}
+                  to={invoiceDateTo}
+                  onFrom={(value) => {
+                    setInvoiceDateFrom(value);
                     setInvoicePage(1);
                   }}
-                  className="h-11 rounded-md border border-input bg-background px-3 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/30"
-                  aria-label="Data inicial"
-                />
-                <input
-                  type="date"
-                  value={invoiceDateTo}
-                  onChange={(event) => {
-                    setInvoiceDateTo(event.target.value);
+                  onTo={(value) => {
+                    setInvoiceDateTo(value);
                     setInvoicePage(1);
                   }}
-                  className="h-11 rounded-md border border-input bg-background px-3 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/30"
-                  aria-label="Data final"
                 />
                 <select
                   value={invoiceStatus}
@@ -196,12 +188,101 @@ function CheckFinancePage() {
   );
 }
 
-function SummaryCard({ label, value, hint }: { label: string; value: ReactNode; hint?: string }) {
+function SummaryCard({
+  label,
+  value,
+  hint,
+  variant = "default",
+}: {
+  label: string;
+  value: ReactNode;
+  hint?: string;
+  variant?: "default" | "success" | "danger";
+}) {
   return (
-    <div className="card-soft p-5">
+    <div
+      className={`card-soft p-5 ${
+        variant === "success"
+          ? "border-emerald-200 bg-emerald-50"
+          : variant === "danger"
+            ? "border-red-200 bg-red-50"
+            : ""
+      }`}
+    >
       <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className="mt-2 text-2xl font-bold">{value}</p>
+      <p className={`mt-2 text-2xl font-bold ${variant === "success" ? "text-emerald-700" : variant === "danger" ? "text-red-700" : ""}`}>{value}</p>
       {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
+
+function DateRangeField({
+  from,
+  to,
+  onFrom,
+  onTo,
+}: {
+  from: string;
+  to: string;
+  onFrom: (value: string) => void;
+  onTo: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const label = from || to ? `${from ? formatDateBR(from) : "Inicio"} - ${to ? formatDateBR(to) : "Fim"}` : "Intervalo de vencimento";
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        className="flex h-11 w-full items-center gap-2 rounded-md border border-input bg-background px-3 text-left text-sm outline-none transition hover:bg-secondary focus:border-brand focus:ring-2 focus:ring-brand/30"
+      >
+        <Calendar className="h-4 w-4 text-muted-foreground" />
+        <span className="truncate">{label}</span>
+      </button>
+      {open && (
+        <div className="absolute left-0 top-12 z-20 w-full min-w-72 rounded-md border border-border bg-card p-3 shadow-soft">
+          <div className="grid gap-3">
+            <label className="text-xs font-medium text-muted-foreground">
+              Data inicial
+              <input
+                type="date"
+                value={from}
+                onChange={(event) => onFrom(event.target.value)}
+                className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-brand"
+              />
+            </label>
+            <label className="text-xs font-medium text-muted-foreground">
+              Data final
+              <input
+                type="date"
+                value={to}
+                onChange={(event) => onTo(event.target.value)}
+                className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-brand"
+              />
+            </label>
+            <div className="flex justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  onFrom("");
+                  onTo("");
+                }}
+                className="h-9 rounded-md border border-border px-3 text-xs font-semibold transition hover:bg-secondary"
+              >
+                Limpar
+              </button>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="h-9 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground transition hover:bg-brand-dark"
+              >
+                Aplicar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
