@@ -23,9 +23,15 @@ const NAV = [
   { to: "/check/chamados", label: "Chamados", icon: MessageSquare },
   { to: "/check/clientes", label: "Clientes", icon: Users },
   { to: "/check/dominios", label: "Domínios", icon: Globe },
-  { to: "/check/financeiro", label: "Financeiro", icon: Receipt },
+  {
+    label: "Financeiro",
+    icon: Receipt,
+    children: [
+      { to: "/check/financeiro", label: "Contas a Receber", icon: Receipt },
+      { to: "/check/contas-a-pagar", label: "Contas a Pagar", icon: WalletCards },
+    ],
+  },
   { to: "/check/fornecedores", label: "Fornecedores", icon: Building2 },
-  { to: "/check/contas-a-pagar", label: "Contas a Pagar", icon: WalletCards },
   { to: "/check/servicos", label: "Serviços", icon: Server },
 ] as const;
 
@@ -74,6 +80,47 @@ export function CheckLayout({
 
           <nav className="flex-1 space-y-1 px-3">
             {NAV.map((item) => {
+              if ("children" in item) {
+                const ParentIcon = item.icon;
+                const parentActive = item.children.some(
+                  (child) => path === child.to || path.startsWith(child.to + "/"),
+                );
+                return (
+                  <div key={item.label} className="space-y-1">
+                    <div
+                      className={cn(
+                        "flex items-center gap-3 rounded-md px-4 py-3 text-sm font-medium",
+                        parentActive ? "text-foreground" : "text-muted-foreground",
+                      )}
+                    >
+                      <ParentIcon className="h-4 w-4" />
+                      {item.label}
+                    </div>
+                    <div className="space-y-1 pl-7">
+                      {item.children.map((child) => {
+                        const active = path === child.to || path.startsWith(child.to + "/");
+                        const ChildIcon = child.icon;
+                        return (
+                          <Link
+                            key={child.to}
+                            to={child.to}
+                            onClick={() => setOpen(false)}
+                            className={cn(
+                              "group flex items-center gap-3 rounded-md px-4 py-2.5 text-sm font-medium transition-colors",
+                              active
+                                ? "bg-primary text-primary-foreground shadow-glow"
+                                : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+                            )}
+                          >
+                            <ChildIcon className="h-4 w-4" />
+                            {child.label}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              }
               const active =
                 item.to === "/check"
                   ? path === "/check" || path === "/check/"
