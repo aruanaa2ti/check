@@ -52,7 +52,6 @@ function CheckDashboardPage() {
   const [contactsLoading, setContactsLoading] = useState(false);
   const [contactsError, setContactsError] = useState<string | null>(null);
   const [copiedEmail, setCopiedEmail] = useState<string | null>(null);
-  const firstName = data.me.name.split(" ")[0] || "Colaborador";
   const stats = [
     {
       label: "Ordens",
@@ -121,24 +120,6 @@ function CheckDashboardPage() {
       subtitle="Visão geral do WHMCS e busca rápida."
       userName={data.me.name}
     >
-      <section className="card-soft relative mb-8 overflow-hidden p-8">
-        <div
-          aria-hidden
-          className="absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(60% 100% at 100% 0%, oklch(0.55 0.18 145 / 0.12), transparent 60%)",
-          }}
-        />
-        <div className="relative">
-          <p className="text-sm font-medium uppercase tracking-wider text-brand-dark">Bem-vindo</p>
-          <h2 className="mt-1 text-3xl font-bold tracking-tight">Olá, {firstName}</h2>
-          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Acompanhe os principais indicadores do WHMCS e consulte rapidamente um domínio.
-          </p>
-        </div>
-      </section>
-
       <section className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {stats.map((stat) => {
           const Icon = stat.icon;
