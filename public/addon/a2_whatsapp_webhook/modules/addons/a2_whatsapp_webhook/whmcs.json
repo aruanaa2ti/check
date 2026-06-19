@@ -1,0 +1,11 @@
+{
+  "schema": "1.0",
+  "type": "whmcs-addons",
+  "name": "a2_whatsapp_webhook",
+  "license": "proprietary",
+  "category": "notifications",
+  "description": {
+    "name": "A2 WhatsApp Webhook",
+    "tagline": "Envio de mensagens WhatsApp via webhook Digisac com opt-in por campo personalizado."
+  }
+}

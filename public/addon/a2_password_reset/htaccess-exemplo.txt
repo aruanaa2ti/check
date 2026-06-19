@@ -1,0 +1,5 @@
+RewriteEngine On
+
+# A2 Password Reset
+# Colocar antes do bloco "WHMCS managed rules".
+RewriteRule ^password/reset/redeem/([A-Za-z0-9]+)/?$ a2-password-reset.php?token=$1 [L,QSA]

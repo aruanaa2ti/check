@@ -1,0 +1,11 @@
+{
+  "schema": "1.0",
+  "type": "whmcs-addons",
+  "name": "a2_password_reset",
+  "license": "proprietary",
+  "category": "security",
+  "description": {
+    "name": "A2 Password Reset",
+    "tagline": "Tela personalizada da A2 para redefinicao de senha do WHMCS."
+  }
+}

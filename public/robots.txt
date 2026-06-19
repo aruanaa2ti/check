@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /check
+Disallow: /cliente
+Disallow: /login
+
+Sitemap: https://a2ti.com.br/sitemap.xml

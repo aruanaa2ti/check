@@ -1,0 +1,190 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+
+  --font-sans: 'Poppins', ui-sans-serif, system-ui, sans-serif;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-glow: var(--primary-glow);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-dark: var(--brand-dark);
+  --color-ink: var(--ink);
+  --color-ink-foreground: var(--ink-foreground);
+  --color-surface: var(--surface);
+
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --shadow-soft: 0 12px 35px oklch(0 0 0 / 0.08);
+  --shadow-glow: 0 16px 40px oklch(0.55 0.18 145 / 0.25);
+  --shadow-card: 0 10px 40px -10px oklch(0 0 0 / 0.08);
+}
+
+:root {
+  --radius: 0.5rem;
+
+  /* Surfaces */
+  --background: oklch(0.97 0 0);          /* #F5F5F5 */
+  --foreground: oklch(0.18 0.01 270);     /* near #111827 */
+  --surface: oklch(0.985 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: var(--foreground);
+  --popover: oklch(1 0 0);
+  --popover-foreground: var(--foreground);
+
+  /* Brand greens — derived from a2ti.com.br #198C19 */
+  --brand: oklch(0.55 0.18 145);
+  --brand-foreground: oklch(1 0 0);
+  --brand-dark: oklch(0.45 0.17 145);
+
+  /* Ink (black) — sidebar, header buttons */
+  --ink: oklch(0 0 0);
+  --ink-foreground: oklch(1 0 0);
+
+  /* Public website primary */
+  --primary: var(--brand);
+  --primary-foreground: oklch(1 0 0);
+  --primary-glow: oklch(0.72 0.18 150);
+
+  --secondary: oklch(0.96 0 0);
+  --secondary-foreground: var(--foreground);
+  --muted: oklch(0.96 0 0);
+  --muted-foreground: oklch(0.47 0.01 270);
+  --accent: oklch(0.96 0.04 145);
+  --accent-foreground: var(--brand-dark);
+
+  --destructive: oklch(0.58 0.22 27);
+  --destructive-foreground: oklch(1 0 0);
+
+  --border: oklch(0.9 0.005 270);
+  --input: oklch(0.9 0.005 270);
+  --ring: var(--brand);
+
+  --success: oklch(0.7 0.16 150);
+  --warning: oklch(0.78 0.15 75);
+  --danger: oklch(0.62 0.22 27);
+
+  --sidebar: var(--card);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: var(--secondary);
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--brand);
+
+  --chart-1: var(--brand);
+  --chart-2: oklch(0.6 0.12 200);
+  --chart-3: oklch(0.55 0.2 30);
+  --chart-4: oklch(0.7 0.15 85);
+  --chart-5: oklch(0.5 0.18 300);
+
+  --gradient-hero: radial-gradient(ellipse at top, oklch(0.72 0.19 150 / 0.12), transparent 60%),
+                   linear-gradient(180deg, var(--background), var(--secondary));
+  --gradient-primary: linear-gradient(135deg, var(--brand), var(--brand-dark));
+}
+
+.dark {
+  --background: oklch(0.14 0.01 270);
+  --foreground: oklch(0.97 0 0);
+  --surface: oklch(0.18 0.01 270);
+  --card: oklch(0.2 0.01 270);
+  --card-foreground: oklch(0.97 0 0);
+  --popover: oklch(0.18 0.01 270);
+  --popover-foreground: oklch(0.97 0 0);
+  --primary: oklch(1 0 0);
+  --primary-foreground: oklch(0 0 0);
+  --secondary: oklch(0.25 0.01 270);
+  --secondary-foreground: oklch(0.97 0 0);
+  --muted: oklch(0.25 0.01 270);
+  --muted-foreground: oklch(0.7 0.01 270);
+  --accent: oklch(0.25 0.04 145);
+  --accent-foreground: oklch(0.95 0 0);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+}
+
+@layer base {
+  * { border-color: var(--color-border); }
+  html, body { font-family: var(--font-sans); }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@utility brand-gradient {
+  background-image: linear-gradient(135deg, var(--brand), var(--brand-dark));
+}
+
+@utility bg-gradient-hero {
+  background: var(--gradient-hero);
+}
+
+@utility bg-gradient-primary {
+  background: var(--gradient-primary);
+}
+
+@utility ink-gradient {
+  background-image: linear-gradient(180deg, oklch(0.1 0 0), oklch(0 0 0));
+}
+
+@utility shadow-card {
+  box-shadow: var(--shadow-card);
+}
+
+@utility text-gradient {
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@utility card-soft {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+}
