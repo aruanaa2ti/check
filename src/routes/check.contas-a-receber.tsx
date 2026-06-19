@@ -33,6 +33,8 @@ function CheckFinancePage() {
   const { me, finance, financeLoadError } = Route.useLoaderData();
   const [invoiceTerm, setInvoiceTerm] = useState("");
   const [invoiceStatus, setInvoiceStatus] = useState("");
+  const [invoiceDateFrom, setInvoiceDateFrom] = useState("");
+  const [invoiceDateTo, setInvoiceDateTo] = useState("");
   const [invoicePage, setInvoicePage] = useState(1);
   const [sendingInvoiceId, setSendingInvoiceId] = useState<number | null>(null);
   const [resendNotice, setResendNotice] = useState("");
@@ -59,9 +61,13 @@ function CheckFinancePage() {
       const statusMatches = invoiceStatus === "__overdue"
         ? isInvoiceOverdue(invoice)
         : !invoiceStatus || invoice.status === invoiceStatus;
-      return (!q || haystack.includes(q)) && statusMatches;
+      return (
+        (!q || haystack.includes(q)) &&
+        statusMatches &&
+        isDateInRange(invoice.duedate, invoiceDateFrom, invoiceDateTo)
+      );
     });
-  }, [finance.invoices, invoiceStatus, invoiceTerm]);
+  }, [finance.invoices, invoiceDateFrom, invoiceDateTo, invoiceStatus, invoiceTerm]);
 
   const invoicePager = paginate(filteredInvoices, invoicePage, 15);
 
@@ -106,7 +112,7 @@ function CheckFinancePage() {
               </div>
             )}
             <div className="border-b border-border p-4">
-              <div className="grid gap-3 md:grid-cols-[1fr_220px]">
+              <div className="grid gap-3 lg:grid-cols-[1fr_180px_180px_220px]">
                 <input
                   value={invoiceTerm}
                   onChange={(event) => {
@@ -115,6 +121,26 @@ function CheckFinancePage() {
                   }}
                   className="h-11 rounded-md border border-input bg-background px-4 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/30"
                   placeholder="Filtrar por cliente, fatura, status ou data"
+                />
+                <input
+                  type="date"
+                  value={invoiceDateFrom}
+                  onChange={(event) => {
+                    setInvoiceDateFrom(event.target.value);
+                    setInvoicePage(1);
+                  }}
+                  className="h-11 rounded-md border border-input bg-background px-3 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/30"
+                  aria-label="Data inicial"
+                />
+                <input
+                  type="date"
+                  value={invoiceDateTo}
+                  onChange={(event) => {
+                    setInvoiceDateTo(event.target.value);
+                    setInvoicePage(1);
+                  }}
+                  className="h-11 rounded-md border border-input bg-background px-3 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/30"
+                  aria-label="Data final"
                 />
                 <select
                   value={invoiceStatus}
@@ -193,6 +219,16 @@ function isInvoiceOverdue(invoice: { duedate: string; status: string }) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return due < today;
+}
+
+function isDateInRange(value: string, from: string, to: string) {
+  if (!from && !to) return true;
+  const date = parseInvoiceDate(value);
+  if (!date) return false;
+
+  const start = from ? parseInvoiceDate(from) : null;
+  const end = to ? parseInvoiceDate(to) : null;
+  return (!start || date >= start) && (!end || date <= end);
 }
 
 function parseInvoiceDate(value: string) {

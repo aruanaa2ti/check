@@ -28,7 +28,7 @@ const NAV = [
     label: "Financeiro",
     icon: Receipt,
     children: [
-      { to: "/check/contas-a-receber", label: "Contas a Receber", icon: Receipt },
+      { to: "/check/contas-a-receber", label: "Contas a Receber", icon: Receipt, tone: "green" },
       { to: "/check/contas-a-pagar", label: "Contas a Pagar", icon: WalletCards },
     ],
   },
@@ -120,8 +120,12 @@ export function CheckLayout({
                               className={cn(
                                 "group flex items-center gap-3 rounded-md px-4 py-2.5 text-sm font-medium transition-colors",
                                 active
-                                  ? "bg-primary text-primary-foreground shadow-glow"
-                                  : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+                                  ? child.tone === "green"
+                                    ? "bg-emerald-600 text-white shadow-glow"
+                                    : "bg-primary text-primary-foreground shadow-glow"
+                                  : child.tone === "green"
+                                    ? "text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
+                                    : "text-muted-foreground hover:bg-secondary hover:text-foreground",
                               )}
                             >
                               <ChildIcon className="h-4 w-4" />

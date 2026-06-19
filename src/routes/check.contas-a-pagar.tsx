@@ -65,6 +65,8 @@ function CheckPayablesPage() {
   const [payables, setPayables] = useState(initial.payables);
   const [term, setTerm] = useState("");
   const [status, setStatus] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [saving, setSaving] = useState(false);
   const [actionId, setActionId] = useState<number | null>(null);
   const [newAccountOpen, setNewAccountOpen] = useState(false);
@@ -82,9 +84,13 @@ function CheckPayablesPage() {
         payable.dueDate,
         payable.paymentMethod,
       ].join(" ").toLowerCase();
-      return (!q || haystack.includes(q)) && (!status || payable.status === status);
+      return (
+        (!q || haystack.includes(q)) &&
+        (!status || payable.status === status) &&
+        isIsoDateInRange(payable.dueDate, dateFrom, dateTo)
+      );
     });
-  }, [payables, status, term]);
+  }, [dateFrom, dateTo, payables, status, term]);
 
   const totals = useMemo(() => {
     const open = payables.filter((item) => item.status === "open" || item.status === "overdue");
@@ -182,12 +188,26 @@ function CheckPayablesPage() {
               {error || notice}
             </div>
           )}
-          <div className="grid gap-3 border-b border-border p-4 md:grid-cols-[1fr_220px]">
+          <div className="grid gap-3 border-b border-border p-4 lg:grid-cols-[1fr_180px_180px_220px]">
             <input
               value={term}
               onChange={(event) => setTerm(event.target.value)}
               className="h-11 rounded-md border border-input bg-background px-4 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/30"
               placeholder="Filtrar por descrição, fornecedor, categoria ou vencimento"
+            />
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(event) => setDateFrom(event.target.value)}
+              className="h-11 rounded-md border border-input bg-background px-3 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/30"
+              aria-label="Data inicial"
+            />
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(event) => setDateTo(event.target.value)}
+              className="h-11 rounded-md border border-input bg-background px-3 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/30"
+              aria-label="Data final"
             />
             <select
               value={status}
@@ -398,4 +418,10 @@ function statusClass(status: string) {
   if (status === "overdue") return "bg-red-100 text-red-700";
   if (status === "cancelled") return "bg-muted text-muted-foreground";
   return "bg-amber-100 text-amber-700";
+}
+
+function isIsoDateInRange(value: string, from: string, to: string) {
+  if (!from && !to) return true;
+  if (!value) return false;
+  return (!from || value >= from) && (!to || value <= to);
 }
