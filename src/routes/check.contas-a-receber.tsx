@@ -42,8 +42,10 @@ function CheckFinancePage() {
   const invoiceStatuses = Array.from(new Set(finance.invoices.map((invoice) => invoice.status).filter(Boolean))).sort();
   const openStatuses = ["Unpaid", "Overdue", "Payment Pending"];
   const openInvoices = finance.invoices.filter((invoice) => openStatuses.includes(invoice.status));
+  const paidInvoices = finance.invoices.filter((invoice) => invoice.status === "Paid");
   const overdueInvoices = finance.invoices.filter(isInvoiceOverdue);
   const openTotal = openInvoices.reduce((total, invoice) => total + invoiceAmountDue(invoice), 0);
+  const paidTotal = paidInvoices.reduce((total, invoice) => total + invoice.total, 0);
   const overdueTotal = overdueInvoices.reduce((total, invoice) => total + invoiceAmountDue(invoice), 0);
 
   const filteredInvoices = useMemo(() => {
@@ -99,7 +101,7 @@ function CheckFinancePage() {
             </section>
           )}
           <section className="grid gap-4 md:grid-cols-3">
-            <SummaryCard label="Faturas listadas" value={finance.invoices.length} />
+            <SummaryCard label="Total Recebido" value={formatMoneyBR(paidTotal)} hint={`${paidInvoices.length} fatura(s) paga(s)`} variant="success" />
             <SummaryCard label="A receber" value={formatMoneyBR(openTotal)} hint={`${openInvoices.length} fatura(s) em aberto`} variant="success" />
             <SummaryCard label="Vencido / em atraso" value={formatMoneyBR(overdueTotal)} hint={`${overdueInvoices.length} fatura(s) vencida(s)`} variant="danger" />
           </section>
@@ -200,15 +202,7 @@ function SummaryCard({
   variant?: "default" | "success" | "danger";
 }) {
   return (
-    <div
-      className={`card-soft p-5 ${
-        variant === "success"
-          ? "border-emerald-200 bg-emerald-50"
-          : variant === "danger"
-            ? "border-red-200 bg-red-50"
-            : ""
-      }`}
-    >
+    <div className="card-soft p-5">
       <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
       <p className={`mt-2 text-2xl font-bold ${variant === "success" ? "text-emerald-700" : variant === "danger" ? "text-red-700" : ""}`}>{value}</p>
       {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}

@@ -160,8 +160,8 @@ function CheckPayablesPage() {
         )}
         <section className="grid gap-4 md:grid-cols-3">
           <SummaryCard label="Em aberto" value={formatMoneyBR(totals.open)} />
-          <SummaryCard label="Vencido" value={formatMoneyBR(totals.overdue)} danger />
-          <SummaryCard label="Pago" value={formatMoneyBR(totals.paid)} />
+          <SummaryCard label="Vencido" value={formatMoneyBR(totals.overdue)} variant="danger" />
+          <SummaryCard label="Pago" value={formatMoneyBR(totals.paid)} variant="success" />
         </section>
 
         <section className="card-soft overflow-hidden">
@@ -361,11 +361,19 @@ function Header({ icon, title }: { icon: ReactNode; title: string }) {
   );
 }
 
-function SummaryCard({ label, value, danger = false }: { label: string; value: string; danger?: boolean }) {
+function SummaryCard({
+  label,
+  value,
+  variant = "default",
+}: {
+  label: string;
+  value: string;
+  variant?: "default" | "success" | "danger";
+}) {
   return (
     <div className="card-soft p-5">
       <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className={`mt-2 text-2xl font-bold ${danger ? "text-red-600" : ""}`}>{value}</p>
+      <p className={`mt-2 text-2xl font-bold ${variant === "success" ? "text-emerald-700" : variant === "danger" ? "text-red-700" : ""}`}>{value}</p>
     </div>
   );
 }
