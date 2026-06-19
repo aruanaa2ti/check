@@ -1,10 +1,10 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Building2, Loader2, Plus, X } from "lucide-react";
+import { Building2, Loader2, Pencil, Plus, X } from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
 import { CheckLayout } from "@/components/check/CheckLayout";
 import { checkMeFn } from "@/lib/check.functions";
-import { createSupplierCategoryFn, createSupplierFn, listSupplierCategoriesFn, listSuppliersFn } from "@/lib/payables.functions";
+import { createSupplierCategoryFn, createSupplierFn, listSupplierCategoriesFn, listSuppliersFn, updateSupplierFn } from "@/lib/payables.functions";
 
 const opts = {
   queryKey: ["check-suppliers"],
@@ -37,12 +37,14 @@ function CheckSuppliersPage() {
   const initial = Route.useLoaderData();
   const createSupplier = useServerFn(createSupplierFn);
   const createCategory = useServerFn(createSupplierCategoryFn);
+  const updateSupplier = useServerFn(updateSupplierFn);
   const [suppliers, setSuppliers] = useState(initial.suppliers);
   const [categories, setCategories] = useState(initial.categories);
   const [term, setTerm] = useState("");
   const [saving, setSaving] = useState(false);
   const [savingCategory, setSavingCategory] = useState(false);
   const [newSupplierOpen, setNewSupplierOpen] = useState(false);
+  const [editingSupplier, setEditingSupplier] = useState<(typeof initial.suppliers)[number] | null>(null);
   const [newCategoryOpen, setNewCategoryOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
@@ -70,29 +72,54 @@ function CheckSuppliersPage() {
     setSaving(true);
     setNotice("");
     setError("");
-    const form = new FormData(event.currentTarget);
+    const formEl = event.currentTarget;
+    const form = new FormData(formEl);
+    const payload = {
+      categoryId: Number(form.get("categoryId") || 0) || undefined,
+      name: String(form.get("name") || ""),
+      document: String(form.get("document") || ""),
+      email: String(form.get("email") || ""),
+      phone: String(form.get("phone") || ""),
+      whatsapp: String(form.get("whatsapp") || ""),
+      pixKey: String(form.get("pixKey") || ""),
+      notes: String(form.get("notes") || ""),
+    };
     try {
-      await createSupplier({
-        data: {
-          categoryId: Number(form.get("categoryId") || 0) || undefined,
-          name: String(form.get("name") || ""),
-          document: String(form.get("document") || ""),
-          email: String(form.get("email") || ""),
-          phone: String(form.get("phone") || ""),
-          whatsapp: String(form.get("whatsapp") || ""),
-          pixKey: String(form.get("pixKey") || ""),
-          notes: String(form.get("notes") || ""),
-        },
-      });
+      if (editingSupplier) {
+        await updateSupplier({ data: { id: editingSupplier.id, ...payload } });
+      } else {
+        await createSupplier({ data: payload });
+      }
       setSuppliers(await listSuppliersFn());
-      event.currentTarget.reset();
+      formEl.reset();
       setNewSupplierOpen(false);
-      setNotice("Fornecedor cadastrado com sucesso.");
+      setEditingSupplier(null);
+      setNotice(editingSupplier ? "Fornecedor atualizado com sucesso." : "Fornecedor cadastrado com sucesso.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Nao foi possivel salvar o fornecedor.");
     } finally {
       setSaving(false);
     }
+  };
+
+  const openNewSupplier = () => {
+    setError("");
+    setNotice("");
+    setEditingSupplier(null);
+    setSelectedCategoryId("");
+    setNewCategoryOpen(false);
+    setNewCategoryName("");
+    setNewSupplierOpen(true);
+  };
+
+  const openEditSupplier = (supplier: (typeof initial.suppliers)[number]) => {
+    setError("");
+    setNotice("");
+    setEditingSupplier(supplier);
+    setSelectedCategoryId(supplier.categoryId ? String(supplier.categoryId) : "");
+    setNewCategoryOpen(false);
+    setNewCategoryName("");
+    setNewSupplierOpen(true);
   };
 
   const addCategory = async () => {
@@ -130,14 +157,7 @@ function CheckSuppliersPage() {
             </div>
             <button
               type="button"
-              onClick={() => {
-                setError("");
-                setNotice("");
-                setSelectedCategoryId("");
-                setNewCategoryOpen(false);
-                setNewCategoryName("");
-                setNewSupplierOpen(true);
-              }}
+              onClick={openNewSupplier}
               className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-brand-dark"
             >
               <Plus className="h-4 w-4" />
@@ -164,7 +184,7 @@ function CheckSuppliersPage() {
               <table className="w-full text-sm">
                 <thead className="bg-muted/50 text-xs uppercase tracking-wider text-muted-foreground">
                   <tr>
-                    {["Fornecedor", "Categoria", "Contato", "Documento", "Pix", "Status"].map((header) => (
+                    {["Fornecedor", "Categoria", "Contato", "Documento", "Pix", "Status", "Ações"].map((header) => (
                       <th key={header} className="px-5 py-3 text-left font-medium">{header}</th>
                     ))}
                   </tr>
@@ -181,6 +201,17 @@ function CheckSuppliersPage() {
                       <td className="px-5 py-4 text-muted-foreground">{supplier.document || "—"}</td>
                       <td className="px-5 py-4 text-muted-foreground">{supplier.pixKey || "—"}</td>
                       <td className="px-5 py-4">{supplier.status === "active" ? "Ativo" : "Inativo"}</td>
+                      <td className="px-5 py-4">
+                        <button
+                          type="button"
+                          title="Editar fornecedor"
+                          aria-label={`Editar fornecedor ${supplier.name}`}
+                          onClick={() => openEditSupplier(supplier)}
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-foreground transition hover:bg-secondary"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -196,7 +227,7 @@ function CheckSuppliersPage() {
             <div className="flex items-center justify-between border-b border-border px-5 py-4">
               <div className="flex items-center gap-2">
                 <Building2 className="h-4 w-4" />
-                <h2 className="text-base font-bold">Novo Fornecedor</h2>
+                <h2 className="text-base font-bold">{editingSupplier ? "Editar Fornecedor" : "Novo Fornecedor"}</h2>
               </div>
               <button
                 type="button"
@@ -214,13 +245,13 @@ function CheckSuppliersPage() {
                 {error}
               </div>
             )}
-            <form onSubmit={onSubmit} className="grid gap-4 p-5 md:grid-cols-2">
-              <Field label="Nome/Razão social" name="name" required />
-              <Field label="CPF/CNPJ" name="document" />
-              <Field label="E-mail" name="email" type="email" />
-              <Field label="Telefone" name="phone" />
-              <Field label="WhatsApp" name="whatsapp" />
-              <Field label="Chave Pix" name="pixKey" />
+            <form key={editingSupplier?.id ?? "new"} onSubmit={onSubmit} className="grid gap-4 p-5 md:grid-cols-2">
+              <Field label="Nome/Razão social" name="name" defaultValue={editingSupplier?.name ?? ""} required />
+              <Field label="CPF/CNPJ" name="document" defaultValue={editingSupplier?.document ?? ""} />
+              <Field label="E-mail" name="email" type="email" defaultValue={editingSupplier?.email ?? ""} />
+              <Field label="Telefone" name="phone" defaultValue={editingSupplier?.phone ?? ""} />
+              <Field label="WhatsApp" name="whatsapp" defaultValue={editingSupplier?.whatsapp ?? ""} />
+              <Field label="Chave Pix" name="pixKey" defaultValue={editingSupplier?.pixKey ?? ""} />
               <label className="text-sm">
                 <span className="mb-1 block font-medium">Categoria</span>
                 <div className="flex gap-2">
@@ -273,7 +304,7 @@ function CheckSuppliersPage() {
                   </div>
                 )}
               </label>
-              <Field label="Observações" name="notes" />
+              <Field label="Observações" name="notes" defaultValue={editingSupplier?.notes ?? ""} />
               <div className="flex justify-end gap-2 border-t border-border pt-4 md:col-span-2">
                 <button
                   type="button"
@@ -288,8 +319,8 @@ function CheckSuppliersPage() {
                   disabled={saving}
                   className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-brand-dark disabled:opacity-60"
                 >
-                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                  Cadastrar fornecedor
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingSupplier ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                  {editingSupplier ? "Salvar fornecedor" : "Cadastrar fornecedor"}
                 </button>
               </div>
             </form>
@@ -300,13 +331,26 @@ function CheckSuppliersPage() {
   );
 }
 
-function Field({ label, name, type = "text", required = false }: { label: string; name: string; type?: string; required?: boolean }) {
+function Field({
+  label,
+  name,
+  type = "text",
+  defaultValue = "",
+  required = false,
+}: {
+  label: string;
+  name: string;
+  type?: string;
+  defaultValue?: string;
+  required?: boolean;
+}) {
   return (
     <label className="text-sm">
       <span className="mb-1 block font-medium">{label}</span>
       <input
         name={name}
         type={type}
+        defaultValue={defaultValue}
         required={required}
         className="h-10 w-full rounded-md border border-input bg-background px-3 outline-none focus:border-brand"
       />

@@ -117,6 +117,50 @@ export const createSupplierFn = createServerFn({ method: "POST" })
     return { ok: true, id: Number(result.insertId ?? 0) };
   });
 
+export const updateSupplierFn = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        id: z.number().int().positive(),
+        categoryId: numberFromForm.optional(),
+        name: z.string().trim().min(2),
+        document: z.string().trim().optional(),
+        email: z.string().trim().optional(),
+        phone: z.string().trim().optional(),
+        whatsapp: z.string().trim().optional(),
+        pixKey: z.string().trim().optional(),
+        notes: z.string().trim().optional(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data }) => {
+    await requirePayablesUser();
+    await mysqlExec(
+      `UPDATE a2_suppliers
+       SET category_id = :categoryId,
+           name = :name,
+           document = :document,
+           email = :email,
+           phone = :phone,
+           whatsapp = :whatsapp,
+           pix_key = :pixKey,
+           notes = :notes
+       WHERE id = :id`,
+      {
+        id: data.id,
+        categoryId: data.categoryId || null,
+        name: data.name,
+        document: data.document || null,
+        email: data.email || null,
+        phone: data.phone || null,
+        whatsapp: data.whatsapp || null,
+        pixKey: data.pixKey || null,
+        notes: data.notes || null,
+      },
+    );
+    return { ok: true };
+  });
+
 export const listPayablesFn = createServerFn({ method: "GET" }).handler(async () => {
   await requirePayablesUser();
   return mysqlQuery<{
