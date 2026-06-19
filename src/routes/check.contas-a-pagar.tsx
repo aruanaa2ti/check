@@ -42,8 +42,18 @@ export const Route = createFileRoute("/check/contas-a-pagar")({
   loader: async ({ context }) => {
     const me = await checkMeFn();
     if (!me) throw redirect({ to: "/check/login" });
-    const data = await context.queryClient.ensureQueryData(opts);
-    return { me, ...data };
+    try {
+      const data = await context.queryClient.ensureQueryData(opts);
+      return { me, ...data, payablesLoadError: "" };
+    } catch (error) {
+      return {
+        me,
+        payables: [],
+        suppliers: [],
+        categories: [],
+        payablesLoadError: error instanceof Error ? error.message : "Nao foi possivel carregar as contas a pagar.",
+      };
+    }
   },
   component: CheckPayablesPage,
 });
@@ -135,6 +145,11 @@ function CheckPayablesPage() {
   return (
     <CheckLayout title="Contas a Pagar" subtitle="Controle interno de pagamentos e vencimentos." userName={initial.me.name}>
       <div className="space-y-6">
+        {initial.payablesLoadError && (
+          <section className="card-soft border-red-200 bg-red-50 p-5 text-sm text-red-700">
+            {initial.payablesLoadError}
+          </section>
+        )}
         <section className="grid gap-4 md:grid-cols-3">
           <SummaryCard label="Em aberto" value={formatMoneyBR(totals.open)} />
           <SummaryCard label="Vencido" value={formatMoneyBR(totals.overdue)} danger />

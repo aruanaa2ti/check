@@ -15,14 +15,22 @@ export const Route = createFileRoute("/check/financeiro")({
   loader: async ({ context }) => {
     const me = await checkMeFn();
     if (!me) throw redirect({ to: "/check/login" });
-    const finance = await context.queryClient.ensureQueryData(opts);
-    return { me, finance };
+    try {
+      const finance = await context.queryClient.ensureQueryData(opts);
+      return { me, finance, financeLoadError: "" };
+    } catch (error) {
+      return {
+        me,
+        finance: { canViewFinance: me.canViewFinance, invoices: [] },
+        financeLoadError: error instanceof Error ? error.message : "Nao foi possivel carregar as contas a receber.",
+      };
+    }
   },
   component: CheckFinancePage,
 });
 
 function CheckFinancePage() {
-  const { me, finance } = Route.useLoaderData();
+  const { me, finance, financeLoadError } = Route.useLoaderData();
   const [invoiceTerm, setInvoiceTerm] = useState("");
   const [invoiceStatus, setInvoiceStatus] = useState("");
   const [invoicePage, setInvoicePage] = useState(1);
@@ -72,13 +80,18 @@ function CheckFinancePage() {
   };
 
   return (
-    <CheckLayout title="Financeiro" subtitle="Visão geral de faturas e transações do WHMCS." userName={me.name}>
+    <CheckLayout title="Contas a Receber" subtitle="Faturas e cobranças vindas do WHMCS." userName={me.name}>
       {!finance.canViewFinance ? (
         <section className="card-soft p-8 text-center text-sm text-muted-foreground">
           Seu usuário não tem permissão para visualizar o financeiro.
         </section>
       ) : (
         <div className="space-y-6">
+          {financeLoadError && (
+            <section className="card-soft border-red-200 bg-red-50 p-5 text-sm text-red-700">
+              {financeLoadError}
+            </section>
+          )}
           <section className="grid gap-4 md:grid-cols-3">
             <SummaryCard label="Faturas listadas" value={finance.invoices.length} />
             <SummaryCard label="A receber" value={formatMoneyBR(openTotal)} hint={`${openInvoices.length} fatura(s) em aberto`} />
