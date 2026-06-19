@@ -31,6 +31,23 @@ export const listSupplierCategoriesFn = createServerFn({ method: "GET" }).handle
   );
 });
 
+export const createSupplierCategoryFn = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        name: z.string().trim().min(2, "Informe o nome da categoria."),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data }) => {
+    await requirePayablesUser();
+    const result: any = await mysqlExec(
+      "INSERT INTO a2_supplier_categories (name) VALUES (:name)",
+      { name: data.name },
+    );
+    return { ok: true, id: Number(result.insertId ?? 0) };
+  });
+
 export const listSuppliersFn = createServerFn({ method: "GET" }).handler(async () => {
   await requirePayablesUser();
   return mysqlQuery<{

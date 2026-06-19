@@ -4,7 +4,7 @@ import { Building2, Loader2, Plus, X } from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
 import { CheckLayout } from "@/components/check/CheckLayout";
 import { checkMeFn } from "@/lib/check.functions";
-import { createSupplierFn, listSupplierCategoriesFn, listSuppliersFn } from "@/lib/payables.functions";
+import { createSupplierCategoryFn, createSupplierFn, listSupplierCategoriesFn, listSuppliersFn } from "@/lib/payables.functions";
 
 const opts = {
   queryKey: ["check-suppliers"],
@@ -36,10 +36,16 @@ export const Route = createFileRoute("/check/fornecedores")({
 function CheckSuppliersPage() {
   const initial = Route.useLoaderData();
   const createSupplier = useServerFn(createSupplierFn);
+  const createCategory = useServerFn(createSupplierCategoryFn);
   const [suppliers, setSuppliers] = useState(initial.suppliers);
+  const [categories, setCategories] = useState(initial.categories);
   const [term, setTerm] = useState("");
   const [saving, setSaving] = useState(false);
+  const [savingCategory, setSavingCategory] = useState(false);
   const [newSupplierOpen, setNewSupplierOpen] = useState(false);
+  const [newCategoryOpen, setNewCategoryOpen] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
 
@@ -89,6 +95,25 @@ function CheckSuppliersPage() {
     }
   };
 
+  const addCategory = async () => {
+    setSavingCategory(true);
+    setNotice("");
+    setError("");
+    try {
+      const result = await createCategory({ data: { name: newCategoryName } });
+      const nextCategories = await listSupplierCategoriesFn();
+      setCategories(nextCategories);
+      setSelectedCategoryId(String(result.id || nextCategories.find((category) => category.name === newCategoryName.trim())?.id || ""));
+      setNewCategoryName("");
+      setNewCategoryOpen(false);
+      setNotice("Categoria cadastrada com sucesso.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Nao foi possivel salvar a categoria.");
+    } finally {
+      setSavingCategory(false);
+    }
+  };
+
   return (
     <CheckLayout title="Fornecedores" subtitle="Cadastro interno de fornecedores." userName={initial.me.name}>
       <div className="space-y-6">
@@ -108,6 +133,9 @@ function CheckSuppliersPage() {
               onClick={() => {
                 setError("");
                 setNotice("");
+                setSelectedCategoryId("");
+                setNewCategoryOpen(false);
+                setNewCategoryName("");
                 setNewSupplierOpen(true);
               }}
               className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-brand-dark"
@@ -195,14 +223,55 @@ function CheckSuppliersPage() {
               <Field label="Chave Pix" name="pixKey" />
               <label className="text-sm">
                 <span className="mb-1 block font-medium">Categoria</span>
-                <select name="categoryId" className="h-10 w-full rounded-md border border-input bg-background px-3 outline-none focus:border-brand">
-                  <option value="">Sem categoria</option>
-                  {initial.categories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex gap-2">
+                  <select
+                    name="categoryId"
+                    value={selectedCategoryId}
+                    onChange={(event) => setSelectedCategoryId(event.target.value)}
+                    className="h-10 min-w-0 flex-1 rounded-md border border-input bg-background px-3 outline-none focus:border-brand"
+                  >
+                    <option value="">Sem categoria</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setNewCategoryOpen((value) => !value)}
+                    className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-border text-foreground transition hover:bg-secondary"
+                    title="Nova categoria"
+                    aria-label="Nova categoria"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
+                {newCategoryOpen && (
+                  <div className="mt-2 flex gap-2">
+                    <input
+                      value={newCategoryName}
+                      onChange={(event) => setNewCategoryName(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          if (!savingCategory) void addCategory();
+                        }
+                      }}
+                      className="h-10 min-w-0 flex-1 rounded-md border border-input bg-background px-3 outline-none focus:border-brand"
+                      placeholder="Nome da categoria"
+                    />
+                    <button
+                      type="button"
+                      disabled={savingCategory}
+                      onClick={addCategory}
+                      className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground transition hover:bg-brand-dark disabled:opacity-60"
+                    >
+                      {savingCategory ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                      Salvar
+                    </button>
+                  </div>
+                )}
               </label>
               <Field label="Observações" name="notes" />
               <div className="flex justify-end gap-2 border-t border-border pt-4 md:col-span-2">
