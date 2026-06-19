@@ -1,9 +1,10 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { Calendar, ChevronLeft, ChevronRight, LoaderCircle, MailCheck, Receipt } from "lucide-react";
-import { useMemo, useState, type ReactNode } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { Calendar, ChevronLeft, ChevronRight, Loader2, LoaderCircle, MailCheck, Plus, Receipt, X } from "lucide-react";
+import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { CheckLayout } from "@/components/check/CheckLayout";
 import { StatusBadge } from "@/components/portal/StatusBadge";
-import { checkFinanceOverviewFn, checkMeFn, checkResendInvoiceEmailFn } from "@/lib/check.functions";
+import { checkCreateInvoiceFn, checkFinanceOverviewFn, checkListClientsFn, checkMeFn, checkResendInvoiceEmailFn } from "@/lib/check.functions";
 import { formatDateBR, formatMoneyBR, invoiceStatusLabel } from "@/lib/format";
 
 const opts = {
@@ -15,12 +16,14 @@ export const Route = createFileRoute("/check/contas-a-receber")({
   loader: async ({ context }) => {
     const me = await checkMeFn();
     if (!me) throw redirect({ to: "/check/login" });
+    const clients = me.canViewFinance ? await checkListClientsFn().catch(() => []) : [];
     try {
       const finance = await context.queryClient.ensureQueryData(opts);
-      return { me, finance, financeLoadError: "" };
+      return { me, finance, clients, financeLoadError: "" };
     } catch (error) {
       return {
         me,
+        clients,
         finance: { canViewFinance: me.canViewFinance, invoices: [], totalReceived: 0 },
         financeLoadError: error instanceof Error ? error.message : "Nao foi possivel carregar as contas a receber.",
       };
@@ -30,12 +33,16 @@ export const Route = createFileRoute("/check/contas-a-receber")({
 });
 
 function CheckFinancePage() {
-  const { me, finance, financeLoadError } = Route.useLoaderData();
+  const { me, finance: initialFinance, clients, financeLoadError } = Route.useLoaderData();
+  const createInvoice = useServerFn(checkCreateInvoiceFn);
+  const [finance, setFinance] = useState(initialFinance);
   const [invoiceTerm, setInvoiceTerm] = useState("");
   const [invoiceStatus, setInvoiceStatus] = useState("");
   const [invoiceDateFrom, setInvoiceDateFrom] = useState("");
   const [invoiceDateTo, setInvoiceDateTo] = useState("");
   const [invoicePage, setInvoicePage] = useState(1);
+  const [newAccountOpen, setNewAccountOpen] = useState(false);
+  const [savingInvoice, setSavingInvoice] = useState(false);
   const [sendingInvoiceId, setSendingInvoiceId] = useState<number | null>(null);
   const [resendNotice, setResendNotice] = useState("");
   const [resendError, setResendError] = useState("");
@@ -74,6 +81,38 @@ function CheckFinancePage() {
 
   const invoicePager = paginate(filteredInvoices, invoicePage, 15);
 
+  const refreshFinance = async () => {
+    setFinance(await checkFinanceOverviewFn());
+  };
+
+  const createReceivable = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSavingInvoice(true);
+    setResendNotice("");
+    setResendError("");
+    const form = new FormData(event.currentTarget);
+    try {
+      const result = await createInvoice({
+        data: {
+          clientId: Number(form.get("clientId") || 0),
+          description: String(form.get("description") || ""),
+          amount: Number(String(form.get("amount") || "0").replace(",", ".")),
+          dueDate: String(form.get("dueDate") || ""),
+          sendInvoice: form.get("sendInvoice") === "on",
+        },
+      });
+      await refreshFinance();
+      event.currentTarget.reset();
+      setNewAccountOpen(false);
+      setInvoicePage(1);
+      setResendNotice(result.message);
+    } catch (error) {
+      setResendError(error instanceof Error ? error.message : "Nao foi possivel criar a conta no WHMCS.");
+    } finally {
+      setSavingInvoice(false);
+    }
+  };
+
   const resendInvoiceEmail = async (invoiceId: number) => {
     setSendingInvoiceId(invoiceId);
     setResendNotice("");
@@ -108,7 +147,24 @@ function CheckFinancePage() {
           </section>
 
           <section className="card-soft overflow-hidden">
-            <FinanceHeader icon={<Receipt className="h-4 w-4" />} title="Faturas" />
+            <div className="flex flex-col gap-3 border-b border-border bg-muted/30 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2">
+                <Receipt className="h-4 w-4" />
+                <h2 className="text-base font-bold">Faturas</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setResendError("");
+                  setResendNotice("");
+                  setNewAccountOpen(true);
+                }}
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-brand-dark"
+              >
+                <Plus className="h-4 w-4" />
+                Nova Conta
+              </button>
+            </div>
             {(resendNotice || resendError) && (
               <div className={`border-b px-5 py-3 text-sm ${resendError ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`}>
                 {resendError || resendNotice}
@@ -185,6 +241,72 @@ function CheckFinancePage() {
             />
             <Pagination pager={invoicePager} label="faturas" onPage={setInvoicePage} />
           </section>
+        </div>
+      )}
+
+      {newAccountOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg border border-border bg-card shadow-soft">
+            <div className="flex items-center justify-between border-b border-border px-5 py-4">
+              <div className="flex items-center gap-2">
+                <Receipt className="h-4 w-4" />
+                <h2 className="text-base font-bold">Nova Conta</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!savingInvoice) setNewAccountOpen(false);
+                }}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+                aria-label="Fechar"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            {resendError && (
+              <div className="border-b border-red-200 bg-red-50 px-5 py-3 text-sm text-red-700">
+                {resendError}
+              </div>
+            )}
+            <form onSubmit={createReceivable} className="grid gap-4 p-5 md:grid-cols-2">
+              <label className="text-sm md:col-span-2">
+                <span className="mb-1 block font-medium">Cliente WHMCS</span>
+                <select name="clientId" required className="h-10 w-full rounded-md border border-input bg-background px-3 outline-none focus:border-brand">
+                  <option value="">Selecione um cliente</option>
+                  {clients.map((client) => (
+                    <option key={client.id} value={client.id}>
+                      {client.companyname || `${client.firstname} ${client.lastname}`.trim() || client.email || `Cliente #${client.id}`}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <Field label="Descrição" name="description" required />
+              <Field label="Valor" name="amount" type="number" step="0.01" required />
+              <Field label="Vencimento" name="dueDate" type="date" required />
+              <label className="flex items-center gap-2 pt-7 text-sm font-medium">
+                <input name="sendInvoice" type="checkbox" defaultChecked className="h-4 w-4 rounded border-input" />
+                Enviar e-mail pelo WHMCS
+              </label>
+              <div className="flex justify-end gap-2 border-t border-border pt-4 md:col-span-2">
+                <button
+                  type="button"
+                  disabled={savingInvoice}
+                  onClick={() => setNewAccountOpen(false)}
+                  className="inline-flex h-10 items-center rounded-md border border-border px-4 text-sm font-semibold transition hover:bg-secondary disabled:opacity-60"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingInvoice}
+                  className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-brand-dark disabled:opacity-60"
+                >
+                  {savingInvoice ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                  Criar conta
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </CheckLayout>
@@ -371,12 +493,18 @@ function parseInvoiceDate(value: string) {
   return parsed;
 }
 
-function FinanceHeader({ icon, title }: { icon: ReactNode; title: string }) {
+function Field({ label, name, type = "text", step, required = false }: { label: string; name: string; type?: string; step?: string; required?: boolean }) {
   return (
-    <div className="flex items-center gap-2 border-b border-border bg-muted/30 px-5 py-4">
-      {icon}
-      <h2 className="text-base font-bold">{title}</h2>
-    </div>
+    <label className="text-sm">
+      <span className="mb-1 block font-medium">{label}</span>
+      <input
+        name={name}
+        type={type}
+        step={step}
+        required={required}
+        className="h-10 w-full rounded-md border border-input bg-background px-3 outline-none focus:border-brand"
+      />
+    </label>
   );
 }
 

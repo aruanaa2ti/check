@@ -10,6 +10,7 @@ import {
   whmcsGetClientDetails,
   whmcsGetClientDomains,
   whmcsGetClientProducts,
+  whmcsCreateInvoice,
   whmcsGetClients,
   whmcsGetContacts,
   whmcsGetDomains,
@@ -632,6 +633,39 @@ export const checkFinanceOverviewFn = createServerFn({ method: "GET" }).handler(
     totalReceived: statMoney(stats, ["income_alltime", "income_all_time", "alltimeincome", "all_time_income", "total_income"]),
   };
 });
+
+export const checkCreateInvoiceFn = createServerFn({ method: "POST" })
+  .inputValidator((d: { clientId: number; description: string; amount: number; dueDate: string; sendInvoice?: boolean }) =>
+    z
+      .object({
+        clientId: z.number().int().positive("Selecione um cliente."),
+        description: z.string().trim().min(3, "Informe uma descricao para a conta."),
+        amount: z.number().positive("Informe um valor maior que zero."),
+        dueDate: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, "Informe uma data de vencimento valida."),
+        sendInvoice: z.boolean().optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const me = await requireCheckUser();
+    if (!canViewCheckFinance(me)) {
+      throw new Error("Seu usuario nao tem permissao para criar faturas.");
+    }
+
+    const result = await whmcsCreateInvoice({
+      clientId: data.clientId,
+      description: data.description,
+      amount: data.amount,
+      dueDate: data.dueDate,
+      sendInvoice: Boolean(data.sendInvoice),
+    });
+    const invoiceId = Number(result.invoiceid ?? result.id ?? 0);
+    return {
+      ok: true,
+      invoiceId,
+      message: invoiceId > 0 ? `Conta #${invoiceId} criada com sucesso no WHMCS.` : "Conta criada com sucesso no WHMCS.",
+    };
+  });
 
 export const checkResendInvoiceEmailFn = createServerFn({ method: "POST" })
   .inputValidator((d: { invoiceId: number }) =>

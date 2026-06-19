@@ -312,6 +312,31 @@ export async function whmcsGetInvoices(clientId?: number, status?: string, limit
   return list(r.invoices?.invoice);
 }
 
+export async function whmcsCreateInvoice({
+  clientId,
+  description,
+  amount,
+  dueDate,
+  sendInvoice,
+}: {
+  clientId: number;
+  description: string;
+  amount: number;
+  dueDate: string;
+  sendInvoice: boolean;
+}) {
+  return whmcsCall("CreateInvoice", {
+    userid: clientId,
+    status: "Unpaid",
+    duedate: dueDate,
+    itemdescription1: description,
+    itemamount1: amount.toFixed(2),
+    itemtaxed1: 0,
+    autoapplycredit: 0,
+    sendinvoice: sendInvoice ? 1 : 0,
+  });
+}
+
 export async function whmcsGetTransactions(clientId?: number, limit = PAGE_SIZE) {
   const params: Record<string, string | number> = {
     limitnum: limit,
