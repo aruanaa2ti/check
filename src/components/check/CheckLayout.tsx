@@ -2,6 +2,7 @@ import { Link, useRouter, useRouterState } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import {
   LayoutDashboard,
+  Building2,
   Globe,
   LogOut,
   Menu,
@@ -9,6 +10,7 @@ import {
   Receipt,
   Server,
   Users,
+  WalletCards,
   X,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
@@ -22,6 +24,8 @@ const NAV = [
   { to: "/check/clientes", label: "Clientes", icon: Users },
   { to: "/check/dominios", label: "Domínios", icon: Globe },
   { to: "/check/financeiro", label: "Financeiro", icon: Receipt },
+  { to: "/check/fornecedores", label: "Fornecedores", icon: Building2 },
+  { to: "/check/contas-a-pagar", label: "Contas a Pagar", icon: WalletCards },
   { to: "/check/servicos", label: "Serviços", icon: Server },
 ] as const;
 

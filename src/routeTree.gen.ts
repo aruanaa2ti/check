@@ -30,8 +30,10 @@ import { Route as ClienteDashboardRouteImport } from './routes/cliente_.dashboar
 import { Route as ClienteChamadosRouteImport } from './routes/cliente_.chamados'
 import { Route as CheckServicosRouteImport } from './routes/check.servicos'
 import { Route as CheckLoginRouteImport } from './routes/check.login'
+import { Route as CheckFornecedoresRouteImport } from './routes/check.fornecedores'
 import { Route as CheckFinanceiroRouteImport } from './routes/check.financeiro'
 import { Route as CheckDominiosRouteImport } from './routes/check.dominios'
+import { Route as CheckContasAPagarRouteImport } from './routes/check.contas-a-pagar'
 import { Route as CheckClientesRouteImport } from './routes/check.clientes'
 import { Route as CheckChamadosRouteImport } from './routes/check.chamados'
 import { Route as PortalServicosRouteImport } from './routes/_portal.servicos'
@@ -147,6 +149,11 @@ const CheckLoginRoute = CheckLoginRouteImport.update({
   path: '/login',
   getParentRoute: () => CheckRoute,
 } as any)
+const CheckFornecedoresRoute = CheckFornecedoresRouteImport.update({
+  id: '/fornecedores',
+  path: '/fornecedores',
+  getParentRoute: () => CheckRoute,
+} as any)
 const CheckFinanceiroRoute = CheckFinanceiroRouteImport.update({
   id: '/financeiro',
   path: '/financeiro',
@@ -155,6 +162,11 @@ const CheckFinanceiroRoute = CheckFinanceiroRouteImport.update({
 const CheckDominiosRoute = CheckDominiosRouteImport.update({
   id: '/dominios',
   path: '/dominios',
+  getParentRoute: () => CheckRoute,
+} as any)
+const CheckContasAPagarRoute = CheckContasAPagarRouteImport.update({
+  id: '/contas-a-pagar',
+  path: '/contas-a-pagar',
   getParentRoute: () => CheckRoute,
 } as any)
 const CheckClientesRoute = CheckClientesRouteImport.update({
@@ -228,8 +240,10 @@ export interface FileRoutesByFullPath {
   '/servicos': typeof PortalServicosRoute
   '/check/chamados': typeof CheckChamadosRoute
   '/check/clientes': typeof CheckClientesRoute
+  '/check/contas-a-pagar': typeof CheckContasAPagarRoute
   '/check/dominios': typeof CheckDominiosRoute
   '/check/financeiro': typeof CheckFinanceiroRoute
+  '/check/fornecedores': typeof CheckFornecedoresRoute
   '/check/login': typeof CheckLoginRoute
   '/check/servicos': typeof CheckServicosRoute
   '/cliente/chamados': typeof ClienteChamadosRoute
@@ -261,8 +275,10 @@ export interface FileRoutesByTo {
   '/servicos': typeof PortalServicosRoute
   '/check/chamados': typeof CheckChamadosRoute
   '/check/clientes': typeof CheckClientesRoute
+  '/check/contas-a-pagar': typeof CheckContasAPagarRoute
   '/check/dominios': typeof CheckDominiosRoute
   '/check/financeiro': typeof CheckFinanceiroRoute
+  '/check/fornecedores': typeof CheckFornecedoresRoute
   '/check/login': typeof CheckLoginRoute
   '/check/servicos': typeof CheckServicosRoute
   '/cliente/chamados': typeof ClienteChamadosRoute
@@ -297,8 +313,10 @@ export interface FileRoutesById {
   '/_portal/servicos': typeof PortalServicosRoute
   '/check/chamados': typeof CheckChamadosRoute
   '/check/clientes': typeof CheckClientesRoute
+  '/check/contas-a-pagar': typeof CheckContasAPagarRoute
   '/check/dominios': typeof CheckDominiosRoute
   '/check/financeiro': typeof CheckFinanceiroRoute
+  '/check/fornecedores': typeof CheckFornecedoresRoute
   '/check/login': typeof CheckLoginRoute
   '/check/servicos': typeof CheckServicosRoute
   '/cliente_/chamados': typeof ClienteChamadosRoute
@@ -333,8 +351,10 @@ export interface FileRouteTypes {
     | '/servicos'
     | '/check/chamados'
     | '/check/clientes'
+    | '/check/contas-a-pagar'
     | '/check/dominios'
     | '/check/financeiro'
+    | '/check/fornecedores'
     | '/check/login'
     | '/check/servicos'
     | '/cliente/chamados'
@@ -366,8 +386,10 @@ export interface FileRouteTypes {
     | '/servicos'
     | '/check/chamados'
     | '/check/clientes'
+    | '/check/contas-a-pagar'
     | '/check/dominios'
     | '/check/financeiro'
+    | '/check/fornecedores'
     | '/check/login'
     | '/check/servicos'
     | '/cliente/chamados'
@@ -401,8 +423,10 @@ export interface FileRouteTypes {
     | '/_portal/servicos'
     | '/check/chamados'
     | '/check/clientes'
+    | '/check/contas-a-pagar'
     | '/check/dominios'
     | '/check/financeiro'
+    | '/check/fornecedores'
     | '/check/login'
     | '/check/servicos'
     | '/cliente_/chamados'
@@ -586,6 +610,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CheckLoginRouteImport
       parentRoute: typeof CheckRoute
     }
+    '/check/fornecedores': {
+      id: '/check/fornecedores'
+      path: '/fornecedores'
+      fullPath: '/check/fornecedores'
+      preLoaderRoute: typeof CheckFornecedoresRouteImport
+      parentRoute: typeof CheckRoute
+    }
     '/check/financeiro': {
       id: '/check/financeiro'
       path: '/financeiro'
@@ -598,6 +629,13 @@ declare module '@tanstack/react-router' {
       path: '/dominios'
       fullPath: '/check/dominios'
       preLoaderRoute: typeof CheckDominiosRouteImport
+      parentRoute: typeof CheckRoute
+    }
+    '/check/contas-a-pagar': {
+      id: '/check/contas-a-pagar'
+      path: '/contas-a-pagar'
+      fullPath: '/check/contas-a-pagar'
+      preLoaderRoute: typeof CheckContasAPagarRouteImport
       parentRoute: typeof CheckRoute
     }
     '/check/clientes': {
@@ -709,8 +747,10 @@ const PortalRouteWithChildren =
 interface CheckRouteChildren {
   CheckChamadosRoute: typeof CheckChamadosRoute
   CheckClientesRoute: typeof CheckClientesRoute
+  CheckContasAPagarRoute: typeof CheckContasAPagarRoute
   CheckDominiosRoute: typeof CheckDominiosRoute
   CheckFinanceiroRoute: typeof CheckFinanceiroRoute
+  CheckFornecedoresRoute: typeof CheckFornecedoresRoute
   CheckLoginRoute: typeof CheckLoginRoute
   CheckServicosRoute: typeof CheckServicosRoute
   CheckIndexRoute: typeof CheckIndexRoute
@@ -719,8 +759,10 @@ interface CheckRouteChildren {
 const CheckRouteChildren: CheckRouteChildren = {
   CheckChamadosRoute: CheckChamadosRoute,
   CheckClientesRoute: CheckClientesRoute,
+  CheckContasAPagarRoute: CheckContasAPagarRoute,
   CheckDominiosRoute: CheckDominiosRoute,
   CheckFinanceiroRoute: CheckFinanceiroRoute,
+  CheckFornecedoresRoute: CheckFornecedoresRoute,
   CheckLoginRoute: CheckLoginRoute,
   CheckServicosRoute: CheckServicosRoute,
   CheckIndexRoute: CheckIndexRoute,
