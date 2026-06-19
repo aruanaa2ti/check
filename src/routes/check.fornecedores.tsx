@@ -59,7 +59,6 @@ function CheckSuppliersPage() {
         supplier.document,
         supplier.email,
         supplier.phone,
-        supplier.whatsapp,
         supplier.categoryName,
         supplier.status,
       ].join(" ").toLowerCase();
@@ -80,8 +79,8 @@ function CheckSuppliersPage() {
       document: String(form.get("document") || ""),
       email: String(form.get("email") || ""),
       phone: String(form.get("phone") || ""),
-      whatsapp: String(form.get("whatsapp") || ""),
       pixKey: String(form.get("pixKey") || ""),
+      status: String(form.get("status") || "active") as "active" | "inactive",
       notes: String(form.get("notes") || ""),
     };
     try {
@@ -196,9 +195,9 @@ function CheckSuppliersPage() {
                       <td className="px-5 py-4 text-muted-foreground">{supplier.categoryName || "—"}</td>
                       <td className="px-5 py-4 text-muted-foreground">
                         <div>{supplier.email || "—"}</div>
-                        <div className="text-xs">{supplier.whatsapp || supplier.phone || ""}</div>
+                        <div className="text-xs">{formatPhone(supplier.phone || "")}</div>
                       </td>
-                      <td className="px-5 py-4 text-muted-foreground">{supplier.document || "—"}</td>
+                      <td className="px-5 py-4 text-muted-foreground">{formatCpfCnpj(supplier.document || "") || "—"}</td>
                       <td className="px-5 py-4 text-muted-foreground">{supplier.pixKey || "—"}</td>
                       <td className="px-5 py-4">{supplier.status === "active" ? "Ativo" : "Inativo"}</td>
                       <td className="px-5 py-4">
@@ -247,11 +246,21 @@ function CheckSuppliersPage() {
             )}
             <form key={editingSupplier?.id ?? "new"} onSubmit={onSubmit} className="grid gap-4 p-5 md:grid-cols-2">
               <Field label="Nome/Razão social" name="name" defaultValue={editingSupplier?.name ?? ""} required />
-              <Field label="CPF/CNPJ" name="document" defaultValue={editingSupplier?.document ?? ""} />
+              <Field label="CPF/CNPJ" name="document" defaultValue={formatCpfCnpj(editingSupplier?.document ?? "")} mask={formatCpfCnpj} />
               <Field label="E-mail" name="email" type="email" defaultValue={editingSupplier?.email ?? ""} />
-              <Field label="Telefone" name="phone" defaultValue={editingSupplier?.phone ?? ""} />
-              <Field label="WhatsApp" name="whatsapp" defaultValue={editingSupplier?.whatsapp ?? ""} />
+              <Field label="Telefone/Celular" name="phone" defaultValue={formatPhone(editingSupplier?.phone ?? "")} mask={formatPhone} />
               <Field label="Chave Pix" name="pixKey" defaultValue={editingSupplier?.pixKey ?? ""} />
+              <label className="text-sm">
+                <span className="mb-1 block font-medium">Status</span>
+                <select
+                  name="status"
+                  defaultValue={editingSupplier?.status ?? "active"}
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 outline-none focus:border-brand"
+                >
+                  <option value="active">Ativo</option>
+                  <option value="inactive">Inativo</option>
+                </select>
+              </label>
               <label className="text-sm">
                 <span className="mb-1 block font-medium">Categoria</span>
                 <div className="flex gap-2">
@@ -336,12 +345,14 @@ function Field({
   name,
   type = "text",
   defaultValue = "",
+  mask,
   required = false,
 }: {
   label: string;
   name: string;
   type?: string;
   defaultValue?: string;
+  mask?: (value: string) => string;
   required?: boolean;
 }) {
   return (
@@ -351,9 +362,44 @@ function Field({
         name={name}
         type={type}
         defaultValue={defaultValue}
+        onInput={(event) => {
+          if (!mask) return;
+          event.currentTarget.value = mask(event.currentTarget.value);
+        }}
         required={required}
         className="h-10 w-full rounded-md border border-input bg-background px-3 outline-none focus:border-brand"
       />
     </label>
   );
+}
+
+function onlyDigits(value: string) {
+  return value.replace(/\D/g, "");
+}
+
+function formatCpfCnpj(value: string) {
+  const digits = onlyDigits(value).slice(0, 14);
+  if (digits.length <= 11) {
+    return digits
+      .replace(/^(\d{3})(\d)/, "$1.$2")
+      .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+      .replace(/^(\d{3})\.(\d{3})\.(\d{3})(\d)/, "$1.$2.$3-$4");
+  }
+  return digits
+    .replace(/^(\d{2})(\d)/, "$1.$2")
+    .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/^(\d{2})\.(\d{3})\.(\d{3})(\d)/, "$1.$2.$3/$4")
+    .replace(/^(\d{2})\.(\d{3})\.(\d{3})\/(\d{4})(\d)/, "$1.$2.$3/$4-$5");
+}
+
+function formatPhone(value: string) {
+  const digits = onlyDigits(value).slice(0, 11);
+  if (digits.length <= 10) {
+    return digits
+      .replace(/^(\d{2})(\d)/, "($1) $2")
+      .replace(/^(\(\d{2}\) \d{4})(\d)/, "$1-$2");
+  }
+  return digits
+    .replace(/^(\d{2})(\d)/, "($1) $2")
+    .replace(/^(\(\d{2}\) \d{5})(\d)/, "$1-$2");
 }

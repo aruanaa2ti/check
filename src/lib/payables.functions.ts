@@ -92,6 +92,7 @@ export const createSupplierFn = createServerFn({ method: "POST" })
         phone: z.string().trim().optional(),
         whatsapp: z.string().trim().optional(),
         pixKey: z.string().trim().optional(),
+        status: z.enum(["active", "inactive"]).default("active"),
         notes: z.string().trim().optional(),
       })
       .parse(data),
@@ -100,9 +101,9 @@ export const createSupplierFn = createServerFn({ method: "POST" })
     const user = await requirePayablesUser();
     const result: any = await mysqlExec(
       `INSERT INTO a2_suppliers
-        (category_id, name, document, email, phone, whatsapp, pix_key, notes)
+        (category_id, name, document, email, phone, whatsapp, pix_key, status, notes)
        VALUES
-        (:categoryId, :name, :document, :email, :phone, :whatsapp, :pixKey, :notes)`,
+        (:categoryId, :name, :document, :email, :phone, :whatsapp, :pixKey, :status, :notes)`,
       {
         categoryId: data.categoryId || null,
         name: data.name,
@@ -111,6 +112,7 @@ export const createSupplierFn = createServerFn({ method: "POST" })
         phone: data.phone || null,
         whatsapp: data.whatsapp || null,
         pixKey: data.pixKey || null,
+        status: data.status,
         notes: data.notes || `Criado por ${user.email}`,
       },
     );
@@ -129,6 +131,7 @@ export const updateSupplierFn = createServerFn({ method: "POST" })
         phone: z.string().trim().optional(),
         whatsapp: z.string().trim().optional(),
         pixKey: z.string().trim().optional(),
+        status: z.enum(["active", "inactive"]).default("active"),
         notes: z.string().trim().optional(),
       })
       .parse(data),
@@ -144,6 +147,7 @@ export const updateSupplierFn = createServerFn({ method: "POST" })
            phone = :phone,
            whatsapp = :whatsapp,
            pix_key = :pixKey,
+           status = :status,
            notes = :notes
        WHERE id = :id`,
       {
@@ -155,6 +159,7 @@ export const updateSupplierFn = createServerFn({ method: "POST" })
         phone: data.phone || null,
         whatsapp: data.whatsapp || null,
         pixKey: data.pixKey || null,
+        status: data.status,
         notes: data.notes || null,
       },
     );
