@@ -5,6 +5,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using PhoneWindows.Controls;
+using PhoneWindows.Services;
 using PhoneWindows.ViewModels;
 using Windows.Graphics;
 using Windows.System;
@@ -16,8 +17,10 @@ public sealed partial class MainWindow : Window
 {
     public PhoneViewModel ViewModel { get; } = new();
     private readonly AppWindow _appWindow;
+    private readonly TrayIconService _trayIcon;
     private readonly HashSet<Window> _toolWindows = [];
     private Window? _incomingWindow;
+    private bool _exitRequested;
 
     public MainWindow()
     {
@@ -29,16 +32,49 @@ public sealed partial class MainWindow : Window
         _appWindow.Title = "Phone";
         var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "Phone.ico");
         if (File.Exists(iconPath)) _appWindow.SetIcon(iconPath);
+        _trayIcon = new TrayIconService(hwnd, iconPath,
+            () => DispatcherQueue.TryEnqueue(ShowFromTray),
+            () => DispatcherQueue.TryEnqueue(ExitFromTray));
+        _appWindow.Closing += (_, args) =>
+        {
+            if (_exitRequested) return;
+            args.Cancel = true;
+            HideInTray();
+        };
 
         ViewModel.Changed += RefreshUi;
         ViewModel.IncomingCall += ShowIncomingCall;
         Closed += (_, _) =>
         {
-            ViewModel.Dispose();
+            _trayIcon.Dispose();
             foreach (var window in _toolWindows.ToArray()) window.Close();
+            ViewModel.Dispose();
         };
         Activated += (_, _) => Root.Focus(FocusState.Programmatic);
         _ = InitializeAsync();
+    }
+
+    private void HideInTray()
+    {
+        foreach (var window in _toolWindows.ToArray())
+        {
+            if (!ReferenceEquals(window, _incomingWindow)) window.Close();
+        }
+        _appWindow.Hide();
+    }
+
+    private void ShowFromTray()
+    {
+        _appWindow.Show();
+        Activate();
+        Root.Focus(FocusState.Programmatic);
+    }
+
+    private void ExitFromTray()
+    {
+        _exitRequested = true;
+        _trayIcon.Dispose();
+        Close();
     }
 
     private async Task InitializeAsync()
