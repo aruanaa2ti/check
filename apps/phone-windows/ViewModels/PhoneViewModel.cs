@@ -82,7 +82,19 @@ public sealed class PhoneViewModel : INotifyPropertyChanged, IDisposable
         _engine.RegistrationChanged += (state, message) =>
         {
             Registration = state;
-            if (state == RegistrationState.Failed) ErrorMessage = message;
+            if (state == RegistrationState.Failed)
+            {
+                ErrorMessage = string.IsNullOrWhiteSpace(message)
+                    ? "O PABX recusou o registro SIP. Confira porta, transporte e senha."
+                    : message;
+                if (Account is not null)
+                {
+                    CrashReporter.LogMessage(
+                        $"Estado: {state}; servidor: {Account.Host}:{Account.Port}; " +
+                        $"transporte: {Account.Transport}; ramal: {Account.Extension}; resposta: {ErrorMessage}",
+                        "Falha no registro SIP");
+                }
+            }
             NotifyComputed();
         };
         _engine.CallChanged += HandleCallChanged;

@@ -29,6 +29,26 @@ internal static class CrashReporter
         }
     }
 
+    internal static string LogMessage(string detail, string context)
+    {
+        try
+        {
+            Directory.CreateDirectory(Folder);
+            var path = Path.Combine(Folder, "phone-error.log");
+            var message = new StringBuilder()
+                .AppendLine($"[{DateTimeOffset.Now:O}] {context}")
+                .AppendLine(detail)
+                .AppendLine(new string('-', 72))
+                .ToString();
+            File.AppendAllText(path, message);
+            return path;
+        }
+        catch
+        {
+            return Path.Combine(Folder, "phone-error.log");
+        }
+    }
+
     internal static void ShowStartupError(Exception exception)
     {
         var path = Log(exception, "Falha ao iniciar o Phone");

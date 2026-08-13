@@ -44,7 +44,12 @@ public sealed class LinphoneSipEngine : IPhoneSipEngine
         _core.Listener.OnAudioDevicesListUpdated = _ => AudioDevicesChanged?.Invoke();
         _core.Start();
 
-        var auth = factory.CreateAuthInfo(account.AuthUser, account.AuthUser, account.Password, null, null, null);
+        // O PABX desafia o REGISTER usando o domínio SIP. No Windows, deixar o
+        // domínio vazio pode impedir o Linphone de associar a credencial recebida
+        // pelo QR Code à resposta 401/407.
+        var auth = factory.CreateAuthInfo(
+            account.Extension, account.AuthUser, account.Password,
+            null, null, account.Host);
         _core.AddAuthInfo(auth);
 
         var parameters = _core.CreateAccountParams();
