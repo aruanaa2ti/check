@@ -1,0 +1,56 @@
+name: Phone Windows
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - phone-windows-preview
+    paths:
+      - "apps/phone-windows/**"
+      - "apps/phone-apple/Sources/Phone/Resources/PhoneIcon-1024.png"
+      - ".github/workflows/phone-windows-build.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Obter codigo
+        uses: actions/checkout@v4
+
+      - name: Instalar .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Instalar Inno Setup
+        shell: pwsh
+        run: choco install innosetup --yes --no-progress
+
+      - name: Compilar e gerar instalador EXE
+        shell: pwsh
+        run: ./apps/phone-windows/scripts/build-windows.ps1 -Configuration Release -Installer
+
+      - name: Validar arquivos
+        shell: pwsh
+        run: |
+          $exe = "apps/phone-windows/artifacts/publish/win-x86/Phone.Windows.exe"
+          $setup = Get-ChildItem "apps/phone-windows/artifacts/installer/Phone-Setup-*-x86.exe" | Select-Object -First 1
+          if (-not (Test-Path $exe)) { throw "Executavel principal nao foi gerado." }
+          if (-not $setup) { throw "Instalador nao foi gerado." }
+          Get-Item $exe, $setup.FullName | Format-Table Name, Length, LastWriteTime
+
+      - name: Publicar instalador
+        uses: actions/upload-artifact@v4
+        with:
+          name: Phone-Windows-x86
+          path: |
+            apps/phone-windows/artifacts/installer/Phone-Setup-*-x86.exe
+            apps/phone-windows/artifacts/publish/win-x86/**
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7

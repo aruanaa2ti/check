@@ -1,0 +1,36 @@
+<UserControl
+    x:Class="PhoneWindows.Controls.ContactsPanel"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:models="using:PhoneWindows.Models">
+    <Grid Width="430" Height="460" RowSpacing="12">
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <TextBox x:Name="SearchBox" Width="300" HorizontalAlignment="Center" PlaceholderText="Buscar contato"
+                 TextChanged="SearchBox_TextChanged">
+            <TextBox.Header>
+                <TextBlock Text="Buscar" Visibility="Collapsed"/>
+            </TextBox.Header>
+        </TextBox>
+        <ListView x:Name="ContactsList" Grid.Row="1" IsItemClickEnabled="True" ItemClick="ContactsList_ItemClick">
+            <ListView.ItemTemplate>
+                <DataTemplate x:DataType="models:PhoneContact">
+                    <Grid Padding="6" ColumnSpacing="12">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="38"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                        <Border Width="36" Height="36" CornerRadius="18" Background="#1800853B">
+                            <TextBlock Text="{x:Bind Initials}" Foreground="{StaticResource PhoneGreenBrush}" FontWeight="SemiBold"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="{x:Bind Name}" FontWeight="SemiBold"/>
+                            <TextBlock Text="{x:Bind Number}" FontSize="12" Foreground="{StaticResource SecondaryTextBrush}"/>
+                        </StackPanel>
+                    </Grid>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+        <TextBlock x:Name="EmptyText" Grid.Row="1" Text="Nenhum contato encontrado" HorizontalAlignment="Center"
+                   VerticalAlignment="Center" Foreground="{StaticResource SecondaryTextBrush}" Visibility="Collapsed"/>
+        <TextBlock x:Name="ContactHint" Grid.Row="2" Text="A busca ocorre somente nesta tela."
+                   HorizontalAlignment="Center" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}"/>
+    </Grid>
+</UserControl>
