@@ -11,12 +11,15 @@
 
             <ToggleSwitch x:Name="RegistrationToggle" Header="Ativar registro SIP" Toggled="RegistrationToggle_Toggled"/>
 
-            <Expander Header="Configurar pelo QR Code">
-                <StackPanel Spacing="8" Padding="0,8,0,4">
+            <Border Background="#08000000" CornerRadius="10" Padding="12">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Configurar pelo link" FontSize="15" FontWeight="SemiBold"/>
+                    <TextBlock Text="Cole o link copiado no PABX para preencher o ramal automaticamente."
+                               FontSize="11" TextWrapping="Wrap" Foreground="{StaticResource SecondaryTextBrush}"/>
                     <TextBox x:Name="QrValueBox" PlaceholderText="Cole aqui o endereço do QR Code" TextWrapping="Wrap"/>
                     <Button Content="Configurar ramal" HorizontalAlignment="Left" Click="Provision_Click"/>
                 </StackPanel>
-            </Expander>
+            </Border>
 
             <TextBlock Text="Configuração manual" FontSize="16" FontWeight="SemiBold"/>
             <Grid ColumnSpacing="10" RowSpacing="9">

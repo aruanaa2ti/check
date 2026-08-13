@@ -48,9 +48,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Phone-Windows-x86
-          path: |
-            apps/phone-windows/artifacts/installer/Phone-Setup-*-x86.exe
-            apps/phone-windows/artifacts/publish/win-x86/**
+          path: apps/phone-windows/artifacts/installer/Phone-Setup-*-x86.exe
           if-no-files-found: error
           compression-level: 0
           retention-days: 7

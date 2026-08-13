@@ -16,6 +16,8 @@ public sealed partial class MainWindow : Window
 {
     public PhoneViewModel ViewModel { get; } = new();
     private readonly AppWindow _appWindow;
+    private readonly HashSet<Window> _toolWindows = [];
+    private Window? _incomingWindow;
 
     public MainWindow()
     {
@@ -30,7 +32,11 @@ public sealed partial class MainWindow : Window
 
         ViewModel.Changed += RefreshUi;
         ViewModel.IncomingCall += ShowIncomingCall;
-        Closed += (_, _) => ViewModel.Dispose();
+        Closed += (_, _) =>
+        {
+            ViewModel.Dispose();
+            foreach (var window in _toolWindows.ToArray()) window.Close();
+        };
         Activated += (_, _) => Root.Focus(FocusState.Programmatic);
         _ = InitializeAsync();
     }
@@ -70,6 +76,11 @@ public sealed partial class MainWindow : Window
             SpeakerButton.Visibility = ViewModel.IsCallActive ? Visibility.Visible : Visibility.Collapsed;
             SpeakerText.Text = ViewModel.SpeakerEnabled ? "Viva-voz ligado" : "Viva-voz";
             SpeakerButton.Opacity = ViewModel.SpeakerEnabled ? 1 : 0.72;
+            if (ViewModel.CallState != Models.PhoneCallState.Incoming && _incomingWindow is not null)
+            {
+                _incomingWindow.Close();
+                _incomingWindow = null;
+            }
         });
     }
 
@@ -101,36 +112,37 @@ public sealed partial class MainWindow : Window
 
     private async void Settings_Click(object sender, RoutedEventArgs e)
     {
-        var panel = new SettingsPanel(ViewModel);
-        var dialog = NewDialog("Phone", panel, "Concluir");
-        await dialog.ShowAsync();
-        RefreshUi();
-        await ShowErrorIfNeededAsync();
+        try
+        {
+            ShowToolWindow("Configurações do Phone", new SettingsPanel(ViewModel), 540, 650);
+        }
+        catch (Exception exception)
+        {
+            await ShowUiErrorAsync("Não foi possível abrir as configurações.", exception);
+        }
     }
 
-    private async void Contacts_Click(object sender, RoutedEventArgs e)
+    private void Contacts_Click(object sender, RoutedEventArgs e)
     {
         var panel = new ContactsPanel();
-        var dialog = NewDialog("Contatos", panel, "Fechar");
+        var window = ShowToolWindow("Contatos", panel, 500, 560);
         panel.NumberSelected += number =>
         {
             ViewModel.Number = number;
-            dialog.Hide();
+            window.Close();
         };
-        await dialog.ShowAsync();
         Root.Focus(FocusState.Programmatic);
     }
 
-    private async void History_Click(object sender, RoutedEventArgs e)
+    private void History_Click(object sender, RoutedEventArgs e)
     {
         var panel = new HistoryPanel(ViewModel);
-        var dialog = NewDialog("Histórico", panel, "Fechar");
+        var window = ShowToolWindow("Histórico", panel, 500, 560);
         panel.NumberSelected += number =>
         {
             ViewModel.Number = number;
-            dialog.Hide();
+            window.Close();
         };
-        await dialog.ShowAsync();
         Root.Focus(FocusState.Programmatic);
     }
 
@@ -180,22 +192,135 @@ public sealed partial class MainWindow : Window
 
     private void ShowIncomingCall(string number)
     {
-        DispatcherQueue.TryEnqueue(async () =>
+        DispatcherQueue.TryEnqueue(() =>
         {
-            _appWindow.Show();
-            Activate();
-            var dialog = NewDialog("Chamada recebida", new TextBlock
+            _incomingWindow?.Close();
+
+            var title = new TextBlock
+            {
+                Text = "Chamada recebida",
+                FontSize = 15,
+                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                HorizontalAlignment = HorizontalAlignment.Center
+            };
+            var caller = new TextBlock
             {
                 Text = number,
-                FontSize = 26,
+                FontSize = 30,
                 HorizontalAlignment = HorizontalAlignment.Center,
-                Margin = new Thickness(0, 18, 0, 18)
-            }, "Recusar");
-            dialog.PrimaryButtonText = "Atender";
-            var result = await dialog.ShowAsync();
-            if (result == ContentDialogResult.Primary) ViewModel.Answer();
-            else ViewModel.EndIncomingCall();
+                TextTrimming = TextTrimming.CharacterEllipsis
+            };
+            var decline = new Button
+            {
+                Content = "Recusar",
+                Width = 120,
+                Height = 42,
+                CornerRadius = new CornerRadius(21),
+                Background = new SolidColorBrush(ColorHelper.FromArgb(255, 220, 38, 38)),
+                Foreground = new SolidColorBrush(Colors.White)
+            };
+            var answer = new Button
+            {
+                Content = "Atender",
+                Width = 120,
+                Height = 42,
+                CornerRadius = new CornerRadius(21),
+                Background = new SolidColorBrush(ColorHelper.FromArgb(255, 0, 133, 59)),
+                Foreground = new SolidColorBrush(Colors.White)
+            };
+            var buttons = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Spacing = 12
+            };
+            buttons.Children.Add(decline);
+            buttons.Children.Add(answer);
+            var content = new StackPanel { Spacing = 16, Padding = new Thickness(22, 18, 22, 12) };
+            content.Children.Add(title);
+            content.Children.Add(caller);
+            content.Children.Add(buttons);
+
+            var window = CreateWindow("Phone · Chamada", content, 350, 205, alwaysOnTop: true, showCloseButton: false);
+            _incomingWindow = window;
+            var actionTaken = false;
+            decline.Click += (_, _) =>
+            {
+                actionTaken = true;
+                ViewModel.EndIncomingCall();
+                window.Close();
+            };
+            answer.Click += (_, _) =>
+            {
+                actionTaken = true;
+                ViewModel.Answer();
+                window.Close();
+            };
+            window.Closed += (_, _) =>
+            {
+                if (!actionTaken && ViewModel.CallState == Models.PhoneCallState.Incoming)
+                    ViewModel.EndIncomingCall();
+                if (ReferenceEquals(_incomingWindow, window)) _incomingWindow = null;
+            };
         });
+    }
+
+    private Window ShowToolWindow(string title, UIElement content, int width, int height) =>
+        CreateWindow(title, content, width, height, alwaysOnTop: false, showCloseButton: true);
+
+    private Window CreateWindow(string title, UIElement content, int width, int height, bool alwaysOnTop, bool showCloseButton)
+    {
+        var window = new Window { Title = title };
+        var root = new Grid
+        {
+            Padding = new Thickness(18, 16, 18, 14),
+            RequestedTheme = ElementTheme.Light,
+            Background = new SolidColorBrush(ColorHelper.FromArgb(255, 250, 250, 250))
+        };
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        if (showCloseButton) root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.Children.Add(content);
+
+        if (showCloseButton)
+        {
+            var close = new Button
+            {
+                Content = "Fechar",
+                HorizontalAlignment = HorizontalAlignment.Right,
+                Margin = new Thickness(0, 12, 0, 0),
+                MinWidth = 88
+            };
+            close.Click += (_, _) => window.Close();
+            Grid.SetRow(close, 1);
+            root.Children.Add(close);
+        }
+
+        window.Content = root;
+        var hwnd = WindowNative.GetWindowHandle(window);
+        var windowId = Win32Interop.GetWindowIdFromWindow(hwnd);
+        var appWindow = AppWindow.GetFromWindowId(windowId);
+        appWindow.Resize(new SizeInt32(width, height));
+        var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "Phone.ico");
+        if (File.Exists(iconPath)) appWindow.SetIcon(iconPath);
+        if (appWindow.Presenter is OverlappedPresenter presenter)
+        {
+            presenter.IsResizable = false;
+            presenter.IsMaximizable = false;
+            presenter.IsAlwaysOnTop = alwaysOnTop;
+        }
+
+        var display = DisplayArea.GetFromWindowId(_appWindow.Id, DisplayAreaFallback.Primary);
+        if (display is not null)
+        {
+            var x = display.WorkArea.X + (display.WorkArea.Width - width) / 2;
+            var y = display.WorkArea.Y + (display.WorkArea.Height - height) / 2;
+            appWindow.Move(new PointInt32(x, y));
+        }
+
+        _toolWindows.Add(window);
+        window.Closed += (_, _) => _toolWindows.Remove(window);
+        window.Activate();
+        return window;
     }
 
     private ContentDialog NewDialog(string title, object content, string closeText) => new()
@@ -213,5 +338,11 @@ public sealed partial class MainWindow : Window
         var message = ViewModel.ErrorMessage;
         ViewModel.ClearError();
         await NewDialog("Phone", new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap }, "OK").ShowAsync();
+    }
+
+    private async Task ShowUiErrorAsync(string message, Exception exception)
+    {
+        Services.CrashReporter.Log(exception, message);
+        await NewDialog("Phone", new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap }, "Fechar").ShowAsync();
     }
 }

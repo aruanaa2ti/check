@@ -12,7 +12,9 @@ public partial class App : Application
         InitializeComponent();
         UnhandledException += (_, args) =>
         {
-            CrashReporter.ShowStartupError(args.Exception);
+            // Um erro de uma tela secundária não deve exibir a caixa antiga do
+            // Windows nem derrubar o softphone. O diagnóstico continua salvo.
+            CrashReporter.Log(args.Exception, "Erro na interface do Phone");
             args.Handled = true;
         };
         AppDomain.CurrentDomain.UnhandledException += (_, args) =>

@@ -3,9 +3,17 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Application.Resources>
-        <Color x:Key="PhoneGreen">#00853B</Color>
-        <SolidColorBrush x:Key="PhoneGreenBrush" Color="{StaticResource PhoneGreen}"/>
-        <SolidColorBrush x:Key="KeyBrush" Color="#F0F0F0"/>
-        <SolidColorBrush x:Key="SecondaryTextBrush" Color="#777777"/>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- Carrega todos os estilos nativos do WinUI. Sem este dicionário,
+                     controles como Expander e ContentDialog procuram recursos de
+                     TabView que não existem e a tela de configurações fecha o app. -->
+                <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls"/>
+            </ResourceDictionary.MergedDictionaries>
+            <Color x:Key="PhoneGreen">#00853B</Color>
+            <SolidColorBrush x:Key="PhoneGreenBrush" Color="{StaticResource PhoneGreen}"/>
+            <SolidColorBrush x:Key="KeyBrush" Color="#F0F0F0"/>
+            <SolidColorBrush x:Key="SecondaryTextBrush" Color="#777777"/>
+        </ResourceDictionary>
     </Application.Resources>
 </Application>
