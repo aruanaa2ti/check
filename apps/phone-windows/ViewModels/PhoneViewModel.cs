@@ -18,6 +18,7 @@ public sealed class PhoneViewModel : INotifyPropertyChanged, IDisposable
     private RegistrationState _registration = RegistrationState.NotConfigured;
     private PhoneCallState _callState = PhoneCallState.Idle;
     private string? _errorMessage;
+    private string? _registrationMessage;
     private bool _speakerEnabled;
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -62,6 +63,8 @@ public sealed class PhoneViewModel : INotifyPropertyChanged, IDisposable
         private set => SetField(ref _errorMessage, value);
     }
 
+    public string RegistrationMessage => _registrationMessage ?? "";
+
     public string StatusLabel => Registration switch
     {
         RegistrationState.NotConfigured => "Configure seu ramal",
@@ -82,6 +85,7 @@ public sealed class PhoneViewModel : INotifyPropertyChanged, IDisposable
         _engine.RegistrationChanged += (state, message) =>
         {
             Registration = state;
+            _registrationMessage = message;
             if (state == RegistrationState.Failed)
             {
                 ErrorMessage = string.IsNullOrWhiteSpace(message)
@@ -329,6 +333,7 @@ public sealed class PhoneViewModel : INotifyPropertyChanged, IDisposable
         OnPropertyChanged(nameof(CanCall));
         OnPropertyChanged(nameof(SpeakerEnabled));
         OnPropertyChanged(nameof(RegistrationEnabled));
+        OnPropertyChanged(nameof(RegistrationMessage));
         OnPropertyChanged(nameof(StartWithWindows));
         Changed?.Invoke();
     }

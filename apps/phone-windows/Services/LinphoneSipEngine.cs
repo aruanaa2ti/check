@@ -51,6 +51,12 @@ public sealed class LinphoneSipEngine : IPhoneSipEngine
             account.Extension, account.AuthUser, account.Password,
             null, null, account.Host);
         _core.AddAuthInfo(auth);
+        // Algumas centrais respondem com um realm diferente do host público.
+        // Mantenha também uma credencial sem domínio para aceitar esse desafio.
+        var fallbackAuth = factory.CreateAuthInfo(
+            account.Extension, account.AuthUser, account.Password,
+            null, null, null);
+        _core.AddAuthInfo(fallbackAuth);
 
         var parameters = _core.CreateAccountParams();
         var identity = factory.CreateAddress($"sip:{account.Extension}@{account.Host}")

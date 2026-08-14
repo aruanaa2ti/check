@@ -16,7 +16,11 @@ public sealed partial class SettingsPanel : UserControl
         _viewModel = viewModel;
         InitializeComponent();
         Loaded += (_, _) => LoadValues();
+        Loaded += (_, _) => _viewModel.Changed += ViewModel_Changed;
+        Unloaded += (_, _) => _viewModel.Changed -= ViewModel_Changed;
     }
+
+    private void ViewModel_Changed() => DispatcherQueue.TryEnqueue(UpdateRegistrationState);
 
     private void LoadValues()
     {
@@ -31,11 +35,25 @@ public sealed partial class SettingsPanel : UserControl
         RegistrationToggle.IsOn = _viewModel.RegistrationEnabled;
         StartupToggle.IsOn = StartupService.IsEnabled || _viewModel.StartWithWindows;
         RemoveButton.Visibility = account is null ? Visibility.Collapsed : Visibility.Visible;
-        CurrentStateText.Text = account is null
-            ? _viewModel.StatusLabel
-            : $"{account.Extension} · {_viewModel.StatusLabel} · {account.Host}:{account.Port}";
+        UpdateRegistrationState();
         LoadAudioDevices();
         _loading = false;
+    }
+
+    private void UpdateRegistrationState()
+    {
+        var account = _viewModel.Account;
+        CurrentStateText.Text = account is null
+            ? _viewModel.StatusLabel
+            : $"{account.Extension} · {_viewModel.StatusLabel} · {account.Host}:{account.Port}/{account.Transport.ToUpperInvariant()}";
+        if (_viewModel.Registration == RegistrationState.Failed)
+        {
+            MessageText.Text = string.IsNullOrWhiteSpace(_viewModel.RegistrationMessage)
+                ? "O PABX recusou o registro SIP."
+                : _viewModel.RegistrationMessage;
+            MessageText.Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(
+                Microsoft.UI.ColorHelper.FromArgb(255, 204, 34, 34));
+        }
     }
 
     private void LoadAudioDevices()
