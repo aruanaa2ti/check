@@ -57,7 +57,7 @@
             <Button x:Name="RemoveButton" Content="Remover configuração" Foreground="#CC2222" Background="Transparent"
                     HorizontalAlignment="Left" Click="Remove_Click"/>
             <TextBlock x:Name="MessageText" TextWrapping="Wrap" FontSize="12"/>
-            <TextBlock Text="Phone para Windows · 0.1.9" FontSize="11" HorizontalAlignment="Center"
+            <TextBlock Text="Phone para Windows · 0.1.10" FontSize="11" HorizontalAlignment="Center"
                        Foreground="{StaticResource SecondaryTextBrush}"/>
         </StackPanel>
     </ScrollViewer>
