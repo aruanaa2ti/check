@@ -33,6 +33,23 @@ if (-not (Test-Path $linphoneWrapper)) {
 
 Push-Location $projectRoot
 try {
+    # O wrapper C# 5.3.19 usa nomes logicos diferentes dos arquivos que o
+    # proprio SDK entrega no Windows. Corrija o P/Invoke na fonte antes da
+    # compilacao; duplicar as DLLs faz o loader criar duas instancias das
+    # bibliotecas nativas e pode encerrar o processo sem excecao gerenciada.
+    $wrapperSource = Get-Content $linphoneWrapper -Raw
+    $wrapperSource = $wrapperSource.Replace(
+        'public const string BELLE_SIP_LIB_NAME = "bellesip";',
+        'public const string BELLE_SIP_LIB_NAME = "belle-sip";')
+    $wrapperSource = $wrapperSource.Replace(
+        'public const string MEDIASTREAMER_LIB_NAME = "mediastreamer";',
+        'public const string MEDIASTREAMER_LIB_NAME = "mediastreamer2";')
+    Set-Content $linphoneWrapper -Value $wrapperSource -Encoding utf8
+    if ((Get-Content $linphoneWrapper -Raw) -notmatch 'BELLE_SIP_LIB_NAME = "belle-sip"' -or
+        (Get-Content $linphoneWrapper -Raw) -notmatch 'MEDIASTREAMER_LIB_NAME = "mediastreamer2"') {
+        throw "Não foi possível corrigir os nomes nativos no wrapper Linphone."
+    }
+
     dotnet restore .\Phone.Windows.csproj
     dotnet publish .\Phone.Windows.csproj `
         -c $Configuration `
@@ -41,21 +58,11 @@ try {
         -p:Platform=x86 `
         -o $publishRoot
 
-    # O wrapper C# 5.3.19 usa os nomes logicos "bellesip" e
-    # "mediastreamer", enquanto o SDK distribui as DLLs como belle-sip e
-    # mediastreamer2. O Windows nao resolve esses nomes automaticamente.
-    Copy-Item (Join-Path $publishRoot "belle-sip.dll") `
-        (Join-Path $publishRoot "bellesip.dll") -Force
-    Copy-Item (Join-Path $publishRoot "mediastreamer2.dll") `
-        (Join-Path $publishRoot "mediastreamer.dll") -Force
-
     $requiredFiles = @(
         (Join-Path $publishRoot "Phone.Windows.exe"),
         (Join-Path $publishRoot "liblinphone.dll"),
         (Join-Path $publishRoot "belle-sip.dll"),
-        (Join-Path $publishRoot "bellesip.dll"),
         (Join-Path $publishRoot "mediastreamer2.dll"),
-        (Join-Path $publishRoot "mediastreamer.dll"),
         (Join-Path $publishRoot "Assets\Phone.ico")
     )
     foreach ($requiredFile in $requiredFiles) {
