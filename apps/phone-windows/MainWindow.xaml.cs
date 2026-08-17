@@ -21,6 +21,7 @@ public sealed partial class MainWindow : Window
     private readonly HashSet<Window> _toolWindows = [];
     private Window? _incomingWindow;
     private bool _exitRequested;
+    private bool _initializationStarted;
 
     public MainWindow()
     {
@@ -51,7 +52,22 @@ public sealed partial class MainWindow : Window
             ViewModel.Dispose();
         };
         Activated += (_, _) => Root.Focus(FocusState.Programmatic);
-        _ = InitializeAsync();
+        Root.Loaded += Root_Loaded;
+    }
+
+    private async void Root_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (_initializationStarted) return;
+        _initializationStarted = true;
+        Root.Loaded -= Root_Loaded;
+        try
+        {
+            await InitializeAsync();
+        }
+        catch (Exception exception)
+        {
+            await ShowUiErrorAsync("Não foi possível inicializar o Phone.", exception);
+        }
     }
 
     private void HideInTray()
@@ -371,14 +387,22 @@ public sealed partial class MainWindow : Window
     private async Task ShowErrorIfNeededAsync()
     {
         if (string.IsNullOrWhiteSpace(ViewModel.ErrorMessage)) return;
+        if (Root.XamlRoot is null)
+        {
+            Services.CrashReporter.LogMessage(
+                ViewModel.ErrorMessage,
+                "Erro do Phone aguardando a interface ficar disponível");
+            return;
+        }
         var message = ViewModel.ErrorMessage;
-        ViewModel.ClearError();
         await NewDialog("Phone", new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap }, "OK").ShowAsync();
+        ViewModel.ClearError();
     }
 
     private async Task ShowUiErrorAsync(string message, Exception exception)
     {
         Services.CrashReporter.Log(exception, message);
+        if (Root.XamlRoot is null) return;
         await NewDialog("Phone", new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap }, "Fechar").ShowAsync();
     }
 }
