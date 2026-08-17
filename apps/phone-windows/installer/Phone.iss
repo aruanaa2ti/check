@@ -7,7 +7,6 @@
 AppId={{31ABDB75-8994-4AB0-9541-D16D985CD82F}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
-UninstallDisplayVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 DefaultDirName={autopf}\A2TI\Phone
 DefaultGroupName={#MyAppName}
