@@ -261,7 +261,6 @@ public sealed class PhoneViewModel : INotifyPropertyChanged, IDisposable
         try
         {
             await _engine.StartAsync(Account);
-            RefreshAudioDevices();
         }
         catch (Exception exception)
         {
