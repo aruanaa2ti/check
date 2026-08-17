@@ -20,7 +20,11 @@ public sealed partial class SettingsPanel : UserControl
         Unloaded += (_, _) => _viewModel.Changed -= ViewModel_Changed;
     }
 
-    private void ViewModel_Changed() => DispatcherQueue.TryEnqueue(UpdateRegistrationState);
+    private void ViewModel_Changed() => DispatcherQueue.TryEnqueue(() =>
+    {
+        UpdateRegistrationState();
+        LoadAudioDevices();
+    });
 
     private void LoadValues()
     {
@@ -58,9 +62,12 @@ public sealed partial class SettingsPanel : UserControl
 
     private void LoadAudioDevices()
     {
+        var wasLoading = _loading;
+        _loading = true;
         FillAudioCombo(MicrophoneBox, _viewModel.AudioDevices.Where(device => device.CanRecord), _viewModel.MicrophoneId);
         FillAudioCombo(OutputBox, _viewModel.AudioDevices.Where(device => device.CanPlay), _viewModel.CallOutputId);
         FillAudioCombo(RingerBox, _viewModel.AudioDevices.Where(device => device.CanPlay), _viewModel.RingerId);
+        _loading = wasLoading;
     }
 
     private static void FillAudioCombo(ComboBox combo, IEnumerable<PhoneAudioDevice> devices, string selectedId)

@@ -41,9 +41,12 @@
             </Grid>
 
             <TextBlock Text="Áudio" FontSize="16" FontWeight="SemiBold"/>
-            <ComboBox x:Name="MicrophoneBox" Header="Microfone" SelectionChanged="MicrophoneBox_SelectionChanged"/>
-            <ComboBox x:Name="OutputBox" Header="Áudio da ligação" SelectionChanged="OutputBox_SelectionChanged"/>
-            <ComboBox x:Name="RingerBox" Header="Campainha" SelectionChanged="RingerBox_SelectionChanged"/>
+            <ComboBox x:Name="MicrophoneBox" Header="Microfone" HorizontalAlignment="Stretch"
+                      SelectionChanged="MicrophoneBox_SelectionChanged"/>
+            <ComboBox x:Name="OutputBox" Header="Áudio da ligação" HorizontalAlignment="Stretch"
+                      SelectionChanged="OutputBox_SelectionChanged"/>
+            <ComboBox x:Name="RingerBox" Header="Campainha" HorizontalAlignment="Stretch"
+                      SelectionChanged="RingerBox_SelectionChanged"/>
             <TextBlock Text="Você pode tocar nos alto-falantes do PC e conversar pelo Phone USB."
                        FontSize="11" TextWrapping="Wrap" Foreground="{StaticResource SecondaryTextBrush}"/>
 
@@ -54,7 +57,7 @@
             <Button x:Name="RemoveButton" Content="Remover configuração" Foreground="#CC2222" Background="Transparent"
                     HorizontalAlignment="Left" Click="Remove_Click"/>
             <TextBlock x:Name="MessageText" TextWrapping="Wrap" FontSize="12"/>
-            <TextBlock Text="Phone para Windows · 0.1.0" FontSize="11" HorizontalAlignment="Center"
+            <TextBlock Text="Phone para Windows · 0.1.7" FontSize="11" HorizontalAlignment="Center"
                        Foreground="{StaticResource SecondaryTextBrush}"/>
         </StackPanel>
     </ScrollViewer>
