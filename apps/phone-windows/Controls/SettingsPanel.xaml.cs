@@ -16,15 +16,21 @@ public sealed partial class SettingsPanel : UserControl
         _viewModel = viewModel;
         InitializeComponent();
         Loaded += (_, _) => LoadValues();
-        Loaded += (_, _) => _viewModel.Changed += ViewModel_Changed;
-        Unloaded += (_, _) => _viewModel.Changed -= ViewModel_Changed;
+        Loaded += (_, _) =>
+        {
+            _viewModel.Changed += ViewModel_Changed;
+            _viewModel.AudioDevicesRefreshed += AudioDevices_Refreshed;
+        };
+        Unloaded += (_, _) =>
+        {
+            _viewModel.Changed -= ViewModel_Changed;
+            _viewModel.AudioDevicesRefreshed -= AudioDevices_Refreshed;
+        };
     }
 
-    private void ViewModel_Changed() => DispatcherQueue.TryEnqueue(() =>
-    {
-        UpdateRegistrationState();
-        LoadAudioDevices();
-    });
+    private void ViewModel_Changed() => DispatcherQueue.TryEnqueue(UpdateRegistrationState);
+
+    private void AudioDevices_Refreshed() => DispatcherQueue.TryEnqueue(LoadAudioDevices);
 
     private void LoadValues()
     {
@@ -142,7 +148,16 @@ public sealed partial class SettingsPanel : UserControl
     private async Task SelectAudioAsync(ComboBox combo, AudioRoute route)
     {
         if (_loading || combo.SelectedItem is not ComboBoxItem { Tag: string id }) return;
-        await _viewModel.SelectAudioDeviceAsync(id, route);
+        try
+        {
+            await _viewModel.SelectAudioDeviceAsync(id, route);
+            ShowMessage("Dispositivo de áudio selecionado.", false);
+        }
+        catch (Exception exception)
+        {
+            CrashReporter.Log(exception, $"Falha ao selecionar áudio ({route})");
+            ShowMessage("Não foi possível selecionar este dispositivo de áudio.", true);
+        }
     }
 
     private void ShowMessage(string message, bool error)

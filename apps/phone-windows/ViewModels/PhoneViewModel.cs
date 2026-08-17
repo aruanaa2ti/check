@@ -24,6 +24,7 @@ public sealed class PhoneViewModel : INotifyPropertyChanged, IDisposable
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action? Changed;
     public event Action<string>? IncomingCall;
+    public event Action? AudioDevicesRefreshed;
 
     public ObservableCollection<CallHistoryItem> History { get; } = [];
     public ObservableCollection<PhoneAudioDevice> AudioDevices { get; } = [];
@@ -287,6 +288,7 @@ public sealed class PhoneViewModel : INotifyPropertyChanged, IDisposable
         if (_preferences.CallOutputId.Length > 0) _engine.SelectAudioDevice(_preferences.CallOutputId, AudioRoute.CallOutput);
         if (_preferences.RingerId.Length > 0) _engine.SelectAudioDevice(_preferences.RingerId, AudioRoute.Ringer);
         _ = _settings.SavePreferencesAsync(_preferences);
+        AudioDevicesRefreshed?.Invoke();
         NotifyComputed();
     }
 
