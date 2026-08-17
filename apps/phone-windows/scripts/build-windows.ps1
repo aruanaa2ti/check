@@ -41,9 +41,21 @@ try {
         -p:Platform=x86 `
         -o $publishRoot
 
+    # O wrapper C# 5.3.19 usa os nomes logicos "bellesip" e
+    # "mediastreamer", enquanto o SDK distribui as DLLs como belle-sip e
+    # mediastreamer2. O Windows nao resolve esses nomes automaticamente.
+    Copy-Item (Join-Path $publishRoot "belle-sip.dll") `
+        (Join-Path $publishRoot "bellesip.dll") -Force
+    Copy-Item (Join-Path $publishRoot "mediastreamer2.dll") `
+        (Join-Path $publishRoot "mediastreamer.dll") -Force
+
     $requiredFiles = @(
         (Join-Path $publishRoot "Phone.Windows.exe"),
         (Join-Path $publishRoot "liblinphone.dll"),
+        (Join-Path $publishRoot "belle-sip.dll"),
+        (Join-Path $publishRoot "bellesip.dll"),
+        (Join-Path $publishRoot "mediastreamer2.dll"),
+        (Join-Path $publishRoot "mediastreamer.dll"),
         (Join-Path $publishRoot "Assets\Phone.ico")
     )
     foreach ($requiredFile in $requiredFiles) {

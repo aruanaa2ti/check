@@ -38,7 +38,7 @@ public sealed class LinphoneSipEngine : IPhoneSipEngine
         _core.Ipv6Enabled = false;
         _core.UseRfc2833ForDtmf = true;
         _core.UseInfoForDtmf = false;
-        _core.SetUserAgent("Phone A2", "0.1.1 (Linphone 5.5.15)");
+        _core.SetUserAgent("Phone A2", "0.1.2 (Linphone 5.3.19)");
         _core.Listener.OnAccountRegistrationStateChanged = OnRegistrationStateChanged;
         _core.Listener.OnCallStateChanged = OnCallStateChanged;
         _core.Listener.OnAudioDevicesListUpdated = _ => AudioDevicesChanged?.Invoke();
