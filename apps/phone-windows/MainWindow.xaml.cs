@@ -288,12 +288,19 @@ public sealed partial class MainWindow : Window
             };
             buttons.Children.Add(decline);
             buttons.Children.Add(answer);
-            var content = new StackPanel { Spacing = 16, Padding = new Thickness(22, 18, 22, 12) };
+            var content = new StackPanel
+            {
+                Spacing = 16,
+                Padding = new Thickness(12, 10, 12, 10),
+                VerticalAlignment = VerticalAlignment.Center
+            };
             content.Children.Add(title);
             content.Children.Add(caller);
             content.Children.Add(buttons);
 
-            var window = CreateWindow("Phone · Chamada", content, 350, 205, alwaysOnTop: true, showCloseButton: false);
+            // A altura informada ao AppWindow inclui a barra de título. Reserve
+            // espaço suficiente para os botões em escalas de tela acima de 100%.
+            var window = CreateWindow("Phone · Chamada", content, 350, 270, alwaysOnTop: true, showCloseButton: false);
             _incomingWindow = window;
             var actionTaken = false;
             decline.Click += (_, _) =>

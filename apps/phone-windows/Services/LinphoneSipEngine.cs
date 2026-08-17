@@ -35,22 +35,22 @@ public sealed class LinphoneSipEngine : IPhoneSipEngine
         Stop();
         RegistrationChanged?.Invoke(ModelRegistrationState.Connecting, null);
 
-        CrashReporter.LogMessage("Obtendo Factory.Instance.", "SIP 0.1.5 · etapa 1");
+        CrashReporter.LogMessage("Obtendo Factory.Instance.", "SIP 0.1.6 · etapa 1");
         var factory = Factory.Instance;
-        CrashReporter.LogMessage("Criando Core com recursos nativos empacotados.", "SIP 0.1.5 · etapa 2");
+        CrashReporter.LogMessage("Criando Core com recursos nativos empacotados.", "SIP 0.1.6 · etapa 2");
         _core = factory.CreateCore("", "", IntPtr.Zero);
-        CrashReporter.LogMessage("Configurando Core e listeners.", "SIP 0.1.5 · etapa 3");
+        CrashReporter.LogMessage("Configurando Core e listeners.", "SIP 0.1.6 · etapa 3");
         _core.Ipv6Enabled = false;
         _core.UseRfc2833ForDtmf = true;
         _core.UseInfoForDtmf = false;
-        _core.SetUserAgent("Phone A2", "0.1.5 (Linphone 5.3.19)");
+        _core.SetUserAgent("Phone A2", "0.1.6 (Linphone 5.3.19)");
         _core.Listener.OnAccountRegistrationStateChanged = OnRegistrationStateChanged;
         _core.Listener.OnCallStateChanged = OnCallStateChanged;
         _core.Listener.OnAudioDevicesListUpdated = _ =>
             _dispatcherQueue.TryEnqueue(() => AudioDevicesChanged?.Invoke());
-        CrashReporter.LogMessage("Iniciando Core.", "SIP 0.1.5 · etapa 4");
+        CrashReporter.LogMessage("Iniciando Core.", "SIP 0.1.6 · etapa 4");
         _core.Start();
-        CrashReporter.LogMessage("Core iniciado; configurando conta.", "SIP 0.1.5 · etapa 5");
+        CrashReporter.LogMessage("Core iniciado; configurando conta.", "SIP 0.1.6 · etapa 5");
 
         // O PABX desafia o REGISTER usando o domínio SIP. No Windows, deixar o
         // domínio vazio pode impedir o Linphone de associar a credencial recebida
@@ -81,7 +81,7 @@ public sealed class LinphoneSipEngine : IPhoneSipEngine
         _core.AddAccount(linphoneAccount);
         _core.DefaultAccount = linphoneAccount;
         _account = account;
-        CrashReporter.LogMessage("Conta adicionada; iniciando Iterate.", "SIP 0.1.5 · etapa 6");
+        CrashReporter.LogMessage("Conta adicionada; iniciando Iterate.", "SIP 0.1.6 · etapa 6");
         _iterateTimer.Start();
         return Task.CompletedTask;
     }
