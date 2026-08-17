@@ -63,6 +63,9 @@ try {
         (Join-Path $publishRoot "liblinphone.dll"),
         (Join-Path $publishRoot "belle-sip.dll"),
         (Join-Path $publishRoot "mediastreamer2.dll"),
+        (Join-Path $publishRoot "share\linphone\rootca.pem"),
+        (Join-Path $publishRoot "share\belr\grammars\sdp_grammar"),
+        (Join-Path $publishRoot "share\sounds\linphone\ringback.wav"),
         (Join-Path $publishRoot "Assets\Phone.ico")
     )
     foreach ($requiredFile in $requiredFiles) {
