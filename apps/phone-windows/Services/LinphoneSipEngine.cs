@@ -32,7 +32,16 @@ public sealed class LinphoneSipEngine : IPhoneSipEngine
         _audioDiscoveryTimer = queue.CreateTimer();
         _audioDiscoveryTimer.Interval = TimeSpan.FromMilliseconds(750);
         _audioDiscoveryTimer.IsRepeating = false;
-        _audioDiscoveryTimer.Tick += (_, _) => AudioDevicesChanged?.Invoke();
+        _audioDiscoveryTimer.Tick += (_, _) =>
+        {
+            var devices = GetAudioDevices();
+            CrashReporter.LogMessage(
+                devices.Count == 0
+                    ? "Nenhum dispositivo de áudio detectado."
+                    : $"{devices.Count} dispositivo(s): {string.Join("; ", devices.Select(device => device.Name))}",
+                "Áudio SIP 0.1.8");
+            AudioDevicesChanged?.Invoke();
+        };
     }
 
     public Task StartAsync(SipAccount account)
@@ -40,22 +49,25 @@ public sealed class LinphoneSipEngine : IPhoneSipEngine
         Stop();
         RegistrationChanged?.Invoke(ModelRegistrationState.Connecting, null);
 
-        CrashReporter.LogMessage("Obtendo Factory.Instance.", "SIP 0.1.7 · etapa 1");
+        CrashReporter.LogMessage("Obtendo Factory.Instance.", "SIP 0.1.8 · etapa 1");
         var factory = Factory.Instance;
-        CrashReporter.LogMessage("Criando Core com recursos nativos empacotados.", "SIP 0.1.7 · etapa 2");
+        var msPluginsPath = Path.Combine(AppContext.BaseDirectory, "lib", "mediastreamer", "plugins");
+        factory.MspluginsDir = msPluginsPath;
+        CrashReporter.LogMessage($"Criando Core; plugins de áudio: {msPluginsPath}", "SIP 0.1.8 · etapa 2");
         _core = factory.CreateCore("", "", IntPtr.Zero);
-        CrashReporter.LogMessage("Configurando Core e listeners.", "SIP 0.1.7 · etapa 3");
+        CrashReporter.LogMessage("Configurando Core e listeners.", "SIP 0.1.8 · etapa 3");
         _core.Ipv6Enabled = false;
         _core.UseRfc2833ForDtmf = true;
         _core.UseInfoForDtmf = false;
-        _core.SetUserAgent("Phone A2", "0.1.7 (Linphone 5.3.19)");
+        _core.SetUserAgent("Phone A2", "0.1.8 (Linphone 5.3.19)");
         _core.Listener.OnAccountRegistrationStateChanged = OnRegistrationStateChanged;
         _core.Listener.OnCallStateChanged = OnCallStateChanged;
         _core.Listener.OnAudioDevicesListUpdated = _ =>
             _dispatcherQueue.TryEnqueue(() => AudioDevicesChanged?.Invoke());
-        CrashReporter.LogMessage("Iniciando Core.", "SIP 0.1.7 · etapa 4");
+        CrashReporter.LogMessage("Iniciando Core.", "SIP 0.1.8 · etapa 4");
         _core.Start();
-        CrashReporter.LogMessage("Core iniciado; configurando conta.", "SIP 0.1.7 · etapa 5");
+        _core.ReloadSoundDevices();
+        CrashReporter.LogMessage("Core iniciado; configurando conta.", "SIP 0.1.8 · etapa 5");
 
         // O PABX desafia o REGISTER usando o domínio SIP. No Windows, deixar o
         // domínio vazio pode impedir o Linphone de associar a credencial recebida
@@ -86,7 +98,7 @@ public sealed class LinphoneSipEngine : IPhoneSipEngine
         _core.AddAccount(linphoneAccount);
         _core.DefaultAccount = linphoneAccount;
         _account = account;
-        CrashReporter.LogMessage("Conta adicionada; iniciando Iterate.", "SIP 0.1.7 · etapa 6");
+        CrashReporter.LogMessage("Conta adicionada; iniciando Iterate.", "SIP 0.1.8 · etapa 6");
         _iterateTimer.Start();
         // Em alguns drivers WASAPI a lista só fica pronta após as primeiras
         // iterações, sem emitir OnAudioDevicesListUpdated na inicialização.
