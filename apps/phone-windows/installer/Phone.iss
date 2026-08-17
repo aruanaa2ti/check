@@ -1,5 +1,5 @@
 #define MyAppName "Phone"
-#define MyAppVersion "0.1.10"
+#define MyAppVersion "0.1.11"
 #define MyAppPublisher "A2TI"
 #define MyAppExeName "Phone.Windows.exe"
 
