@@ -125,6 +125,7 @@ public sealed partial class MainWindow : Window
             DeleteButton.Opacity = ViewModel.Number.Length == 0 ? 0 : 1;
             TransferButton.Visibility = ViewModel.CallState == Models.PhoneCallState.Connected
                 ? Visibility.Visible : Visibility.Collapsed;
+            TransferText.Text = ViewModel.TransferButtonLabel;
             SpeakerButton.Visibility = ViewModel.IsCallActive ? Visibility.Visible : Visibility.Collapsed;
             SpeakerText.Text = ViewModel.SpeakerEnabled ? "Viva-voz ligado" : "Viva-voz";
             SpeakerButton.Opacity = ViewModel.SpeakerEnabled ? 1 : 0.72;
@@ -200,9 +201,15 @@ public sealed partial class MainWindow : Window
 
     private async void Transfer_Click(object sender, RoutedEventArgs e)
     {
+        if (ViewModel.AttendedTransferReady)
+        {
+            ViewModel.CompleteAttendedTransfer();
+            await ShowErrorIfNeededAsync();
+            return;
+        }
         var field = new TextBox { PlaceholderText = "Ramal ou número" };
-        var dialog = NewDialog("Transferir chamada", field, "Cancelar");
-        dialog.PrimaryButtonText = "Transferir";
+        var dialog = NewDialog("Transferir com anúncio", field, "Cancelar");
+        dialog.PrimaryButtonText = "Ligar para o ramal";
         dialog.PrimaryButtonClick += async (_, args) =>
         {
             if (string.IsNullOrWhiteSpace(field.Text)) { args.Cancel = true; return; }

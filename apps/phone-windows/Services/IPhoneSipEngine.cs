@@ -7,12 +7,14 @@ public interface IPhoneSipEngine : IDisposable
     event Action<RegistrationState, string?>? RegistrationChanged;
     event Action<PhoneCallState, string?>? CallChanged;
     event Action? AudioDevicesChanged;
+    event Action<bool>? AttendedTransferChanged;
 
     Task StartAsync(SipAccount account);
     Task CallAsync(string number);
     void SendDtmf(char digit);
     void Answer();
     Task TransferAsync(string number);
+    void CompleteAttendedTransfer();
     void EndCall();
     IReadOnlyList<PhoneAudioDevice> GetAudioDevices();
     void SelectAudioDevice(string id, AudioRoute route);
@@ -37,6 +39,7 @@ internal sealed class MissingLinphoneSipEngine : IPhoneSipEngine
     public event Action<RegistrationState, string?>? RegistrationChanged;
     public event Action<PhoneCallState, string?>? CallChanged;
     public event Action? AudioDevicesChanged;
+    public event Action<bool>? AttendedTransferChanged;
 
     public Task StartAsync(SipAccount account)
     {
@@ -49,6 +52,7 @@ internal sealed class MissingLinphoneSipEngine : IPhoneSipEngine
     public void SendDtmf(char digit) => throw new InvalidOperationException("Motor SIP indisponível.");
     public void Answer() => throw new InvalidOperationException("Motor SIP indisponível.");
     public Task TransferAsync(string number) => Task.FromException(new InvalidOperationException("Motor SIP indisponível."));
+    public void CompleteAttendedTransfer() => throw new InvalidOperationException("Motor SIP indisponível.");
     public void EndCall() => CallChanged?.Invoke(PhoneCallState.Idle, null);
     public IReadOnlyList<PhoneAudioDevice> GetAudioDevices() => [];
     public void SelectAudioDevice(string id, AudioRoute route) { }

@@ -119,7 +119,7 @@
             <Button x:Name="TransferButton" Visibility="Collapsed" Click="Transfer_Click" Style="{StaticResource AccentButtonStyle}">
                 <StackPanel Orientation="Horizontal" Spacing="7">
                     <FontIcon Glyph="&#xE8AB;" FontSize="13"/>
-                    <TextBlock Text="Transferir"/>
+                    <TextBlock x:Name="TransferText" Text="Transferir"/>
                 </StackPanel>
             </Button>
         </StackPanel>

@@ -12,6 +12,8 @@ public sealed class LinphoneSipEngine : IPhoneSipEngine
     private Core? _core;
     private SipAccount? _account;
     private string? _previousOutputDeviceId;
+    private Linphone.Call? _transferSource;
+    private Linphone.Call? _transferConsultation;
     private readonly DispatcherQueue _dispatcherQueue;
     private readonly DispatcherQueueTimer _iterateTimer;
     private readonly DispatcherQueueTimer _audioDiscoveryTimer;
@@ -19,6 +21,7 @@ public sealed class LinphoneSipEngine : IPhoneSipEngine
     public event Action<ModelRegistrationState, string?>? RegistrationChanged;
     public event Action<ModelCallState, string?>? CallChanged;
     public event Action? AudioDevicesChanged;
+    public event Action<bool>? AttendedTransferChanged;
 
     public LinphoneSipEngine()
     {
@@ -39,7 +42,7 @@ public sealed class LinphoneSipEngine : IPhoneSipEngine
                 devices.Count == 0
                     ? "Nenhum dispositivo de áudio detectado."
                     : $"{devices.Count} dispositivo(s): {string.Join("; ", devices.Select(device => device.Name))}",
-                "Áudio SIP 0.1.11");
+                "Áudio SIP 0.1.12");
             AudioDevicesChanged?.Invoke();
         };
     }
@@ -49,25 +52,25 @@ public sealed class LinphoneSipEngine : IPhoneSipEngine
         Stop();
         RegistrationChanged?.Invoke(ModelRegistrationState.Connecting, null);
 
-        CrashReporter.LogMessage("Obtendo Factory.Instance.", "SIP 0.1.11 · etapa 1");
+        CrashReporter.LogMessage("Obtendo Factory.Instance.", "SIP 0.1.12 · etapa 1");
         var factory = Factory.Instance;
         var msPluginsPath = Path.Combine(AppContext.BaseDirectory, "lib", "mediastreamer", "plugins");
         factory.MspluginsDir = msPluginsPath;
-        CrashReporter.LogMessage($"Criando Core; plugins de áudio: {msPluginsPath}", "SIP 0.1.11 · etapa 2");
+        CrashReporter.LogMessage($"Criando Core; plugins de áudio: {msPluginsPath}", "SIP 0.1.12 · etapa 2");
         _core = factory.CreateCore("", "", IntPtr.Zero);
-        CrashReporter.LogMessage("Configurando Core e listeners.", "SIP 0.1.11 · etapa 3");
+        CrashReporter.LogMessage("Configurando Core e listeners.", "SIP 0.1.12 · etapa 3");
         _core.Ipv6Enabled = false;
         _core.UseRfc2833ForDtmf = true;
         _core.UseInfoForDtmf = false;
-        _core.SetUserAgent("Phone A2", "0.1.11 (Linphone 5.3.19)");
+        _core.SetUserAgent("Phone A2", "0.1.12 (Linphone 5.3.19)");
         _core.Listener.OnAccountRegistrationStateChanged = OnRegistrationStateChanged;
         _core.Listener.OnCallStateChanged = OnCallStateChanged;
         _core.Listener.OnAudioDevicesListUpdated = _ =>
             _dispatcherQueue.TryEnqueue(() => AudioDevicesChanged?.Invoke());
-        CrashReporter.LogMessage("Iniciando Core.", "SIP 0.1.11 · etapa 4");
+        CrashReporter.LogMessage("Iniciando Core.", "SIP 0.1.12 · etapa 4");
         _core.Start();
         _core.ReloadSoundDevices();
-        CrashReporter.LogMessage("Core iniciado; configurando conta.", "SIP 0.1.11 · etapa 5");
+        CrashReporter.LogMessage("Core iniciado; configurando conta.", "SIP 0.1.12 · etapa 5");
 
         // O PABX desafia o REGISTER usando o domínio SIP. No Windows, deixar o
         // domínio vazio pode impedir o Linphone de associar a credencial recebida
@@ -98,7 +101,7 @@ public sealed class LinphoneSipEngine : IPhoneSipEngine
         _core.AddAccount(linphoneAccount);
         _core.DefaultAccount = linphoneAccount;
         _account = account;
-        CrashReporter.LogMessage("Conta adicionada; iniciando Iterate.", "SIP 0.1.11 · etapa 6");
+        CrashReporter.LogMessage("Conta adicionada; iniciando Iterate.", "SIP 0.1.12 · etapa 6");
         _iterateTimer.Start();
         // Em alguns drivers WASAPI a lista só fica pronta após as primeiras
         // iterações, sem emitir OnAudioDevicesListUpdated na inicialização.
@@ -131,12 +134,35 @@ public sealed class LinphoneSipEngine : IPhoneSipEngine
 
     public Task TransferAsync(string number)
     {
-        if (_core?.CurrentCall is not { } call || _account is null) return Task.CompletedTask;
+        if (string.IsNullOrWhiteSpace(number)) throw new ArgumentException("Informe o ramal de destino.");
+        if (_core?.CurrentCall is not { } call || _account is null)
+            throw new InvalidOperationException("Não há chamada ativa.");
+        if (_transferSource is not null || _transferConsultation is not null)
+            throw new InvalidOperationException("Já existe uma transferência em andamento.");
         var uri = number.Contains('@') ? $"sip:{number}" : $"sip:{number}@{_account.Host}";
         var address = Factory.Instance.CreateAddress(uri)
                       ?? throw new InvalidOperationException("Destino SIP inválido.");
-        call.TransferTo(address);
+        call.Pause();
+        var consultation = _core.InviteAddress(address);
+        if (consultation is null)
+        {
+            call.Resume();
+            throw new InvalidOperationException("Não foi possível chamar o ramal de destino.");
+        }
+        _transferSource = call;
+        _transferConsultation = consultation;
+        AttendedTransferChanged?.Invoke(false);
         return Task.CompletedTask;
+    }
+
+    public void CompleteAttendedTransfer()
+    {
+        if (_transferSource is null || _transferConsultation is null)
+            throw new InvalidOperationException("Não há transferência com anúncio em andamento.");
+        _transferSource.TransferToAnother(_transferConsultation);
+        _transferSource = null;
+        _transferConsultation = null;
+        AttendedTransferChanged?.Invoke(false);
     }
 
     public void EndCall()
@@ -173,7 +199,7 @@ public sealed class LinphoneSipEngine : IPhoneSipEngine
                 _core.RingerDevice = device.Id;
                 break;
         }
-        CrashReporter.LogMessage($"Rota: {route}; dispositivo: {device.DeviceName}; id: {device.Id}", "Áudio selecionado 0.1.11");
+        CrashReporter.LogMessage($"Rota: {route}; dispositivo: {device.DeviceName}; id: {device.Id}", "Áudio selecionado 0.1.12");
     }
 
     public bool SetSpeakerEnabled(bool enabled)
@@ -210,6 +236,9 @@ public sealed class LinphoneSipEngine : IPhoneSipEngine
         }
         _account = null;
         _previousOutputDeviceId = null;
+        _transferSource = null;
+        _transferConsultation = null;
+        AttendedTransferChanged?.Invoke(false);
         CallChanged?.Invoke(ModelCallState.Idle, null);
         RegistrationChanged?.Invoke(ModelRegistrationState.NotConfigured, null);
     }
@@ -230,6 +259,25 @@ public sealed class LinphoneSipEngine : IPhoneSipEngine
     private void OnCallStateChanged(Core core, Linphone.Call call, CallState state, string message)
     {
         var remote = call.RemoteAddress?.Username ?? "Desconhecido";
+        if (ReferenceEquals(call, _transferConsultation))
+        {
+            if (state is CallState.Connected or CallState.StreamsRunning)
+            {
+                AttendedTransferChanged?.Invoke(true);
+            }
+            else if (state is CallState.End or CallState.Released or CallState.Error)
+            {
+                _transferSource?.Resume();
+                _transferSource = null;
+                _transferConsultation = null;
+                AttendedTransferChanged?.Invoke(false);
+                if (core.Calls.Count > 0)
+                {
+                    CallChanged?.Invoke(ModelCallState.Connected, core.CurrentCall?.RemoteAddress?.Username ?? remote);
+                    return;
+                }
+            }
+        }
         var mapped = state switch
         {
             CallState.IncomingReceived or CallState.PushIncomingReceived => ModelCallState.Incoming,

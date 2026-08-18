@@ -20,6 +20,7 @@ public sealed class PhoneViewModel : INotifyPropertyChanged, IDisposable
     private string? _errorMessage;
     private string? _registrationMessage;
     private bool _speakerEnabled;
+    private bool _attendedTransferReady;
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action? Changed;
@@ -79,6 +80,8 @@ public sealed class PhoneViewModel : INotifyPropertyChanged, IDisposable
     public bool IsCallActive => CallState != PhoneCallState.Idle;
     public bool CanCall => IsCallActive || (Number.Length > 0 && Registration == RegistrationState.Connected);
     public bool SpeakerEnabled => _speakerEnabled;
+    public bool AttendedTransferReady => _attendedTransferReady;
+    public string TransferButtonLabel => AttendedTransferReady ? "Concluir transferência" : "Transferir";
 
     public PhoneViewModel()
     {
@@ -104,6 +107,11 @@ public sealed class PhoneViewModel : INotifyPropertyChanged, IDisposable
         };
         _engine.CallChanged += HandleCallChanged;
         _engine.AudioDevicesChanged += RefreshAudioDevices;
+        _engine.AttendedTransferChanged += ready =>
+        {
+            _attendedTransferReady = ready;
+            NotifyComputed();
+        };
         _notifier.Register();
     }
 
@@ -184,6 +192,12 @@ public sealed class PhoneViewModel : INotifyPropertyChanged, IDisposable
     public async Task TransferAsync(string destination)
     {
         try { await _engine.TransferAsync(destination); }
+        catch (Exception exception) { ErrorMessage = exception.Message; }
+    }
+
+    public void CompleteAttendedTransfer()
+    {
+        try { _engine.CompleteAttendedTransfer(); }
         catch (Exception exception) { ErrorMessage = exception.Message; }
     }
 
@@ -310,6 +324,7 @@ public sealed class PhoneViewModel : INotifyPropertyChanged, IDisposable
         else if (state == PhoneCallState.Idle && previous != PhoneCallState.Idle)
         {
             _speakerEnabled = false;
+            _attendedTransferReady = false;
             _activeHistoryId = null;
             _notifier.Clear();
             _ = _historyStore.SaveAsync(History);
@@ -333,6 +348,8 @@ public sealed class PhoneViewModel : INotifyPropertyChanged, IDisposable
         OnPropertyChanged(nameof(IsCallActive));
         OnPropertyChanged(nameof(CanCall));
         OnPropertyChanged(nameof(SpeakerEnabled));
+        OnPropertyChanged(nameof(AttendedTransferReady));
+        OnPropertyChanged(nameof(TransferButtonLabel));
         OnPropertyChanged(nameof(RegistrationEnabled));
         OnPropertyChanged(nameof(RegistrationMessage));
         OnPropertyChanged(nameof(StartWithWindows));
