@@ -271,7 +271,7 @@ public sealed class LinphoneSipEngine : IPhoneSipEngine
                 _transferSource = null;
                 _transferConsultation = null;
                 AttendedTransferChanged?.Invoke(false);
-                if (core.Calls.Count > 0)
+                if (core.Calls.Any())
                 {
                     CallChanged?.Invoke(ModelCallState.Connected, core.CurrentCall?.RemoteAddress?.Username ?? remote);
                     return;
